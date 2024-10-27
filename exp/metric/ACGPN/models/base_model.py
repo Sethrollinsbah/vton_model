@@ -7,13 +7,13 @@ import sys
 
 class BaseModel(torch.nn.Module):
     def name(self):
-        return 'BaseModel'
+        return "BaseModel"
 
     def initialize(self, opt, device):
         self.opt = opt
         self.device = device
         self.isTrain = opt.isTrain
-        self.Tensor = torch.cuda.FloatTensor if self.device!='cpu' else torch.Tensor
+        self.Tensor = torch.cuda.FloatTensor if self.device != "cpu" else torch.Tensor
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
 
     def set_input(self, input):
@@ -43,20 +43,20 @@ class BaseModel(torch.nn.Module):
 
     # helper saving function that can be used by subclasses
     def save_network(self, network, network_label, epoch_label, gpu_ids):
-        save_filename = '%s_net_%s.pth' % (epoch_label, network_label)
+        save_filename = "%s_net_%s.pth" % (epoch_label, network_label)
         save_path = os.path.join(self.save_dir, save_filename)
         torch.save(network.state_dict(), save_path)
 
     # helper loading function that can be used by subclasses
-    def load_network(self, network, network_label, epoch_label, save_dir=''):
-        save_filename = '%s_net_%s.pth' % (epoch_label, network_label)
+    def load_network(self, network, network_label, epoch_label, save_dir=""):
+        save_filename = "%s_net_%s.pth" % (epoch_label, network_label)
         if not save_dir:
             save_dir = self.save_dir
         save_path = os.path.join(save_dir, save_filename)
         if not os.path.isfile(save_path):
-            print('%s not exists yet!' % save_path)
-            if network_label == 'G':
-                raise('Generator must exist!')
+            print("%s not exists yet!" % save_path)
+            if network_label == "G":
+                raise ("Generator must exist!")
         else:
             # network.load_state_dict(torch.load(save_path))
 

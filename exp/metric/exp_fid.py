@@ -9,21 +9,30 @@ from metrics.pytorch_fid.fid_score import calculate_fid_given_paths
 from metrics.lpips.lpips import calculate_lpips_given_paths
 
 
-DEVICE = 'cuda:1'
+DEVICE = "cuda:1"
 MODELS = {
-    'ACGPN': run_acgpn,
-    'C_VTON': run_cvton, 
-    'DAFlow': run_daflow,
+    "ACGPN": run_acgpn,
+    "C_VTON": run_cvton,
+    "DAFlow": run_daflow,
     # 'RMGN_VITON': run_rmgn,
-    'PF_AFN': run_pfafn,
-    'FS_VTON': run_fs_vton,
+    "PF_AFN": run_pfafn,
+    "FS_VTON": run_fs_vton,
 }
 
 for model_path, run_func in MODELS.items():
-    run_func(Path(model_path) / 'VITON/VITON_test', Path('results') / model_path, batch_size=1, device=DEVICE)
+    run_func(
+        Path(model_path) / "VITON/VITON_test",
+        Path("results") / model_path,
+        batch_size=1,
+        device=DEVICE,
+    )
 
-    test_dir = Path(model_path) / 'VITON/VITON_test' / 'test_img'
-    out_dir = Path('results') / model_path / 'tryon'
-    fid = calculate_fid_given_paths(paths=['VITON/VITON_test/test_img', str(out_dir)], batch_size=50, device=DEVICE)
-    lpips = calculate_lpips_given_paths(paths=['VITON/VITON_test/test_img', str(out_dir)], device=DEVICE)
-    print(f'{model_path}: {fid}, {lpips}')
+    test_dir = Path(model_path) / "VITON/VITON_test" / "test_img"
+    out_dir = Path("results") / model_path / "tryon"
+    fid = calculate_fid_given_paths(
+        paths=["VITON/VITON_test/test_img", str(out_dir)], batch_size=50, device=DEVICE
+    )
+    lpips = calculate_lpips_given_paths(
+        paths=["VITON/VITON_test/test_img", str(out_dir)], device=DEVICE
+    )
+    print(f"{model_path}: {fid}, {lpips}")

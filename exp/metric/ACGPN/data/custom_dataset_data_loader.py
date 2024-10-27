@@ -5,6 +5,7 @@ from data.base_data_loader import BaseDataLoader
 def CreateDataset(opt):
     dataset = None
     from data.aligned_dataset import AlignedDataset
+
     dataset = AlignedDataset()
     dataset.initialize(opt)
     return dataset
@@ -12,7 +13,7 @@ def CreateDataset(opt):
 
 class CustomDatasetDataLoader(BaseDataLoader):
     def name(self):
-        return 'CustomDatasetDataLoader'
+        return "CustomDatasetDataLoader"
 
     def initialize(self, opt):
         BaseDataLoader.initialize(self, opt)
@@ -21,7 +22,8 @@ class CustomDatasetDataLoader(BaseDataLoader):
             self.dataset,
             batch_size=opt.batchSize,
             shuffle=not opt.serial_batches,
-            num_workers=int(opt.nThreads))
+            num_workers=int(opt.nThreads),
+        )
 
     def load_data(self):
         return self.dataloader

@@ -10,13 +10,17 @@ from models.common.transformer import PixelWiseViT
 
 def conv_bn(inp, oup, stride):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, 3, stride, 1, bias=False), nn.BatchNorm2d(oup), nn.ReLU6(inplace=True)
+        nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
+        nn.BatchNorm2d(oup),
+        nn.ReLU6(inplace=True),
     )
 
 
 def conv_1x1_bn(inp, oup):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, 1, 1, 0, bias=False), nn.BatchNorm2d(oup), nn.ReLU6(inplace=True)
+        nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
+        nn.BatchNorm2d(oup),
+        nn.ReLU6(inplace=True),
     )
 
 
@@ -32,7 +36,9 @@ class InvertedResidual(nn.Module):
         if expand_ratio == 1:
             self.conv = nn.Sequential(
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
+                nn.Conv2d(
+                    hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False
+                ),
                 nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 # pw-linear
@@ -46,7 +52,9 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
+                nn.Conv2d(
+                    hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False
+                ),
                 nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 # pw-linear
@@ -86,9 +94,13 @@ class MobileNetV2(nn.Module):
             output_channel = c
             for i in range(n):
                 if i == 0:
-                    self.features.append(block(input_channel, output_channel, s, expand_ratio=t))
+                    self.features.append(
+                        block(input_channel, output_channel, s, expand_ratio=t)
+                    )
                 else:
-                    self.features.append(block(input_channel, output_channel, 1, expand_ratio=t))
+                    self.features.append(
+                        block(input_channel, output_channel, 1, expand_ratio=t)
+                    )
                 input_channel = output_channel
 
         # building last several layers
@@ -122,7 +134,7 @@ class MobileNetV2(nn.Module):
 
 
 class VitMobileNetV2_unet(BaseModel):
-    def __init__(self, input_c, output_c, mode='train'):
+    def __init__(self, input_c, output_c, mode="train"):
         super().__init__()
         encoder_outc = 384
 
@@ -135,8 +147,8 @@ class VitMobileNetV2_unet(BaseModel):
             n_blocks=6,
             ffn_features=encoder_outc * 4,
             embed_features=encoder_outc,
-            activ='gelu',
-            norm='layer',
+            activ="gelu",
+            norm="layer",
             image_shape=(encoder_outc, 8, 6),
             rezero=True,
         )
@@ -153,7 +165,9 @@ class VitMobileNetV2_unet(BaseModel):
         self.dconv4 = nn.ConvTranspose2d(24, 16, 4, padding=1, stride=2)
         self.invres4 = InvertedResidual(32, 16, 1, 6)
 
-        self.conv_last = nn.Conv2d(16, output_c, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv_last = nn.Conv2d(
+            16, output_c, kernel_size=3, stride=1, padding=1, bias=False
+        )
 
         self._init_weights()
 
@@ -191,7 +205,7 @@ class VitMobileNetV2_unet(BaseModel):
         up4 = torch.cat([x1, self.dconv4(up3)], dim=1)
         up4 = self.invres4(up4)
 
-        x = interpolate(up4, scale_factor=2, mode='nearest')
+        x = interpolate(up4, scale_factor=2, mode="nearest")
 
         x = self.conv_last(x)
 

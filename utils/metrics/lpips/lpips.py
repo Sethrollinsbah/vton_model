@@ -19,7 +19,7 @@ def spatial_average(in_tens, keepdim=True):
 
 def upsample(in_tens, out_HW=(64, 64)):  # assumes scale factor is same for H and W
     # in_H, in_W = in_tens.shape[2], in_tens.shape[3]
-    return nn.Upsample(size=out_HW, mode='bilinear', align_corners=False)(in_tens)
+    return nn.Upsample(size=out_HW, mode="bilinear", align_corners=False)(in_tens)
 
 
 # Learned perceptual metric
@@ -27,8 +27,8 @@ class LPIPS(nn.Module):
     def __init__(
         self,
         pretrained=True,
-        net='alex',
-        version='0.1',
+        net="alex",
+        version="0.1",
         lpips=True,
         spatial=False,
         pnet_rand=False,
@@ -76,8 +76,13 @@ class LPIPS(nn.Module):
         super().__init__()
         if verbose:
             print(
-                'Setting up [%s] perceptual loss: trunk [%s], v[%s], spatial [%s]'
-                % ('LPIPS' if lpips else 'baseline', net, version, 'on' if spatial else 'off')
+                "Setting up [%s] perceptual loss: trunk [%s], v[%s], spatial [%s]"
+                % (
+                    "LPIPS" if lpips else "baseline",
+                    net,
+                    version,
+                    "on" if spatial else "off",
+                )
             )
 
         self.pnet_type = net
@@ -88,13 +93,13 @@ class LPIPS(nn.Module):
         self.version = version
         self.scaling_layer = ScalingLayer()
 
-        if self.pnet_type in ['vgg', 'vgg16']:
+        if self.pnet_type in ["vgg", "vgg16"]:
             net_type = vgg16
             self.chns = [64, 128, 256, 512, 512]
-        elif self.pnet_type == 'alex':
+        elif self.pnet_type == "alex":
             net_type = alexnet
             self.chns = [64, 192, 384, 256, 256]
-        elif self.pnet_type == 'squeeze':
+        elif self.pnet_type == "squeeze":
             net_type = squeezenet
             self.chns = [64, 128, 256, 384, 384, 512, 512]
         self.L = len(self.chns)
@@ -108,7 +113,7 @@ class LPIPS(nn.Module):
             self.lin3 = NetLinLayer(self.chns[3], use_dropout=use_dropout)
             self.lin4 = NetLinLayer(self.chns[4], use_dropout=use_dropout)
             self.lins = [self.lin0, self.lin1, self.lin2, self.lin3, self.lin4]
-            if self.pnet_type == 'squeeze':  # 7 layers for squeezenet
+            if self.pnet_type == "squeeze":  # 7 layers for squeezenet
                 self.lin5 = NetLinLayer(self.chns[5], use_dropout=use_dropout)
                 self.lin6 = NetLinLayer(self.chns[6], use_dropout=use_dropout)
                 self.lins += [self.lin5, self.lin6]
@@ -122,44 +127,52 @@ class LPIPS(nn.Module):
                     model_path = os.path.abspath(
                         os.path.join(
                             inspect.getfile(self.__init__),
-                            '..',
-                            f'weights/v{version}/{net}.pth',
+                            "..",
+                            f"weights/v{version}/{net}.pth",
                         )
                     )
 
                 if verbose:
-                    print('Loading model from: %s' % model_path)
-                self.load_state_dict(torch.load(model_path, map_location='cpu'), strict=False)
+                    print("Loading model from: %s" % model_path)
+                self.load_state_dict(
+                    torch.load(model_path, map_location="cpu"), strict=False
+                )
 
         if eval_mode:
             self.eval()
 
     def forward(self, in0, in1, retPerLayer=False, normalize=False):
-        if normalize:  # turn on this flag if input is [0,1] so it can be adjusted to [-1, +1]
+        if (
+            normalize
+        ):  # turn on this flag if input is [0,1] so it can be adjusted to [-1, +1]
             in0 = 2 * in0 - 1
             in1 = 2 * in1 - 1
 
         # v0.0 - original release had a bug, where input was not scaled
         in0_input, in1_input = (
             (self.scaling_layer(in0), self.scaling_layer(in1))
-            if self.version == '0.1'
+            if self.version == "0.1"
             else (in0, in1)
         )
         outs0, outs1 = self.net.forward(in0_input), self.net.forward(in1_input)
         feats0, feats1, diffs = {}, {}, {}
 
         for kk in range(self.L):
-            feats0[kk], feats1[kk] = normalize_tensor(outs0[kk]), normalize_tensor(outs1[kk])
+            feats0[kk], feats1[kk] = normalize_tensor(outs0[kk]), normalize_tensor(
+                outs1[kk]
+            )
             diffs[kk] = (feats0[kk] - feats1[kk]) ** 2
 
         if self.lpips:
             if self.spatial:
                 res = [
-                    upsample(self.lins[kk](diffs[kk]), out_HW=in0.shape[2:]) for kk in range(self.L)
+                    upsample(self.lins[kk](diffs[kk]), out_HW=in0.shape[2:])
+                    for kk in range(self.L)
                 ]
             else:
                 res = [
-                    spatial_average(self.lins[kk](diffs[kk]), keepdim=True) for kk in range(self.L)
+                    spatial_average(self.lins[kk](diffs[kk]), keepdim=True)
+                    for kk in range(self.L)
                 ]
         else:
             if self.spatial:
@@ -186,15 +199,19 @@ class LPIPS(nn.Module):
 class ScalingLayer(nn.Module):
     def __init__(self):
         super().__init__()
-        self.register_buffer('shift', torch.Tensor([-0.030, -0.088, -0.188])[None, :, None, None])
-        self.register_buffer('scale', torch.Tensor([0.458, 0.448, 0.450])[None, :, None, None])
+        self.register_buffer(
+            "shift", torch.Tensor([-0.030, -0.088, -0.188])[None, :, None, None]
+        )
+        self.register_buffer(
+            "scale", torch.Tensor([0.458, 0.448, 0.450])[None, :, None, None]
+        )
 
     def forward(self, inp):
         return (inp - self.shift) / self.scale
 
 
 class NetLinLayer(nn.Module):
-    '''A single linear layer which does a 1x1 conv'''
+    """A single linear layer which does a 1x1 conv"""
 
     def __init__(self, chn_in, chn_out=1, use_dropout=False):
         super().__init__()
@@ -215,7 +232,7 @@ class NetLinLayer(nn.Module):
         return self.model(x)
 
 
-def calculate_lpips_given_paths(paths, device, backbone='vgg', version='0.1'):
+def calculate_lpips_given_paths(paths, device, backbone="vgg", version="0.1"):
     loss_fn = LPIPS(net=backbone, version=version).to(device)
     loss_fn.eval()
 
@@ -224,17 +241,21 @@ def calculate_lpips_given_paths(paths, device, backbone='vgg', version='0.1'):
     lpips_avg = 0
     for f in files:
         if not os.path.exists(os.path.join(paths[1], f)):
-            raise FileNotFoundError(f'{os.path.join(paths[1], f)} does not exist')
+            raise FileNotFoundError(f"{os.path.join(paths[1], f)} does not exist")
 
         # Load images
         # img0 = im2tensor(load_image(os.path.join(paths[0], f))).to(device) # RGB image from [-1,1]
         # img1 = im2tensor(load_image(os.path.join(paths[1], f))).to(device)
         img0 = (
-            np.array(Image.open(os.path.join(paths[0], f))).transpose(2, 0, 1).astype(np.float32)
+            np.array(Image.open(os.path.join(paths[0], f)))
+            .transpose(2, 0, 1)
+            .astype(np.float32)
             / 255
         ) * 2 - 1
         img1 = (
-            np.array(Image.open(os.path.join(paths[1], f))).transpose(2, 0, 1).astype(np.float32)
+            np.array(Image.open(os.path.join(paths[1], f)))
+            .transpose(2, 0, 1)
+            .astype(np.float32)
             / 255
         ) * 2 - 1
         img0 = torch.from_numpy(img0).unsqueeze(0).to(device)

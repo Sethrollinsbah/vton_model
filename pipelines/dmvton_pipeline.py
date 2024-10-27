@@ -22,11 +22,11 @@ class DMVTONPipeline(BaseVTONPipeline):
             self._load_pretrained(checkpoints)
 
     def _load_pretrained(self, checkpoints):
-        if checkpoints.get('warp') is not None:
-            warp_ckpt = get_ckpt(checkpoints['warp'])
+        if checkpoints.get("warp") is not None:
+            warp_ckpt = get_ckpt(checkpoints["warp"])
             load_ckpt(self.warp_model, warp_ckpt)
-        if checkpoints.get('gen') is not None:
-            gen_ckpt = get_ckpt(checkpoints['gen'])
+        if checkpoints.get("gen") is not None:
+            gen_ckpt = get_ckpt(checkpoints["gen"])
             load_ckpt(self.gen_model, gen_ckpt)
 
     def forward(self, person, clothes, clothes_edge, phase="test"):
@@ -42,8 +42,8 @@ class DMVTONPipeline(BaseVTONPipeline):
         warped_edge = F.grid_sample(
             clothes_edge,
             last_flow.permute(0, 2, 3, 1),
-            mode='bilinear',
-            padding_mode='zeros',
+            mode="bilinear",
+            padding_mode="zeros",
             align_corners=self.align_corners,
         )
 

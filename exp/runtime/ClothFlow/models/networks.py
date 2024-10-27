@@ -1,6 +1,7 @@
 """FPN in PyTorch.
 See the paper "Feature Pyramid Networks for Object Detection" for more details.
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,9 +21,15 @@ class ResBlock(nn.Module):
 
         model = []
         model += [
-            Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation=activation, pad_type=pad_type)
+            Conv2dBlock(
+                dim, dim, 3, 1, 1, norm=norm, activation=activation, pad_type=pad_type
+            )
         ]
-        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation="none", pad_type=pad_type)]
+        model += [
+            Conv2dBlock(
+                dim, dim, 3, 1, 1, norm=norm, activation="none", pad_type=pad_type
+            )
+        ]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -88,7 +95,9 @@ class Conv2dBlock(nn.Module):
             assert 0, "Unsupported activation: {}".format(activation)
 
         # initialize convolution
-        self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias)
+        self.conv = nn.Conv2d(
+            input_dim, output_dim, kernel_size, stride, bias=self.use_bias
+        )
 
     def forward(self, x):
         x = self.conv(self.pad(x))
@@ -100,16 +109,27 @@ class Conv2dBlock(nn.Module):
 
 
 class ResBlockDown(nn.Module):
-    def __init__(self, dim_in, dim_out, norm="batch", activation="relu", pad_type="zero"):
+    def __init__(
+        self, dim_in, dim_out, norm="batch", activation="relu", pad_type="zero"
+    ):
         super(ResBlockDown, self).__init__()
 
         model = []
         model += [
             Conv2dBlock(
-                dim_in, dim_out, 3, 2, 1, norm=norm, activation=activation, pad_type=pad_type
+                dim_in,
+                dim_out,
+                3,
+                2,
+                1,
+                norm=norm,
+                activation=activation,
+                pad_type=pad_type,
             )
         ]
-        model += [ResBlock(dim=dim_out, norm=norm, activation="none", pad_type=pad_type)]
+        model += [
+            ResBlock(dim=dim_out, norm=norm, activation="none", pad_type=pad_type)
+        ]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -202,13 +222,21 @@ class FlowEstimator(nn.Module):
         t1, t2, t3, t4, t5 = self.TargetFPN(s_t)
 
         f5 = self.e5(torch.cat([s5, t5], dim=1))
-        f4 = self.upsample(f5) + self.e4(torch.cat([self.warp(s4, self.upsample(f5)), t4], dim=1))
+        f4 = self.upsample(f5) + self.e4(
+            torch.cat([self.warp(s4, self.upsample(f5)), t4], dim=1)
+        )
 
-        f3 = self.upsample(f4) + self.e3(torch.cat([self.warp(s3, self.upsample(f4)), t3], dim=1))
+        f3 = self.upsample(f4) + self.e3(
+            torch.cat([self.warp(s3, self.upsample(f4)), t3], dim=1)
+        )
 
-        f2 = self.upsample(f3) + self.e2(torch.cat([self.warp(s2, self.upsample(f3)), t2], dim=1))
+        f2 = self.upsample(f3) + self.e2(
+            torch.cat([self.warp(s2, self.upsample(f3)), t2], dim=1)
+        )
 
-        f1 = self.upsample(f2) + self.e1(torch.cat([self.warp(s1, self.upsample(f2)), t1], dim=1))
+        f1 = self.upsample(f2) + self.e1(
+            torch.cat([self.warp(s1, self.upsample(f2)), t1], dim=1)
+        )
 
         # Warped clothing item
         c_s_prime = self.warp(c_s, self.upsample(f1))
@@ -293,6 +321,7 @@ import torchvision
 # VGG network definition
 ##################################################################################
 from torchvision import models
+
 
 # Source: https://github.com/NVIDIA/pix2pixHD
 class Vgg19(torch.nn.Module):
@@ -417,7 +446,9 @@ def get_norm_layer(norm_type="instance"):
     if norm_type == "batch":
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
     elif norm_type == "instance":
-        norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=False)
+        norm_layer = functools.partial(
+            nn.InstanceNorm2d, affine=False, track_running_stats=False
+        )
     elif norm_type == "none":
         norm_layer = None
     else:
@@ -474,7 +505,15 @@ def define_D(opts):
     net = None
 
     net = NLayerDiscriminator(
-        input_nc, ndf, n_layers, norm_layer, use_sigmoid, kw, padw, nf_mult, nf_mult_prev
+        input_nc,
+        ndf,
+        n_layers,
+        norm_layer,
+        use_sigmoid,
+        kw,
+        padw,
+        nf_mult,
+        nf_mult_prev,
     )
 
     init_weights(net, init_type, init_gain)
@@ -485,7 +524,16 @@ def define_D(opts):
 # Defines the PatchGAN discriminator with the specified arguments.
 class NLayerDiscriminator(nn.Module):
     def __init__(
-        self, input_nc, ndf, n_layers, norm_layer, use_sigmoid, kw, padw, nf_mult, nf_mult_prev,
+        self,
+        input_nc,
+        ndf,
+        n_layers,
+        norm_layer,
+        use_sigmoid,
+        kw,
+        padw,
+        nf_mult,
+        nf_mult_prev,
     ):
         super(NLayerDiscriminator, self).__init__()
 
@@ -496,13 +544,15 @@ class NLayerDiscriminator(nn.Module):
 
         sequence = [
             # Use spectral normalization
-            SpectralNorm(nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw)),
+            SpectralNorm(
+                nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw)
+            ),
             nn.LeakyReLU(0.2, True),
         ]
 
         for n in range(1, n_layers):
             nf_mult_prev = nf_mult
-            nf_mult = min(2 ** n, 8)
+            nf_mult = min(2**n, 8)
             sequence += [
                 # Use spectral normalization
                 SpectralNorm(
@@ -520,7 +570,7 @@ class NLayerDiscriminator(nn.Module):
             ]
 
         nf_mult_prev = nf_mult
-        nf_mult = min(2 ** n_layers, 8)
+        nf_mult = min(2**n_layers, 8)
         sequence += [
             # Use spectral normalization
             SpectralNorm(
@@ -539,7 +589,9 @@ class NLayerDiscriminator(nn.Module):
 
         # Use spectral normalization
         sequence += [
-            SpectralNorm(nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw))
+            SpectralNorm(
+                nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)
+            )
         ]
 
         if use_sigmoid:

@@ -23,15 +23,13 @@ class CVTON(nn.Module):
         self.model.eval()
         self.device = device
 
-
     def forward(self, data_i):
         image, label = models.preprocess_input(self.opt, data_i, self.device)
         pred = self.model(image, label)
         return pred
-    
 
 
-'''
+"""
 1. Introduction
 - Overview
 - Motivation
@@ -102,4 +100,4 @@ Small note: use yolo in video
 - Human studying
 
 5. Conclusion
-'''
+"""

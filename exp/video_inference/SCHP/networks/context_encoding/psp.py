@@ -23,14 +23,23 @@ class PSPModule(nn.Module):
     Reference:
         Zhao, Hengshuang, et al. *"Pyramid scene parsing network."*
     """
+
     def __init__(self, features, out_features=512, sizes=(1, 2, 3, 6)):
         super(PSPModule, self).__init__()
 
         self.stages = []
-        self.stages = nn.ModuleList([self._make_stage(features, out_features, size) for size in sizes])
+        self.stages = nn.ModuleList(
+            [self._make_stage(features, out_features, size) for size in sizes]
+        )
         self.bottleneck = nn.Sequential(
-            nn.Conv2d(features + len(sizes) * out_features, out_features, kernel_size=3, padding=1, dilation=1,
-                      bias=False),
+            nn.Conv2d(
+                features + len(sizes) * out_features,
+                out_features,
+                kernel_size=3,
+                padding=1,
+                dilation=1,
+                bias=False,
+            ),
             InPlaceABNSync(out_features),
         )
 
@@ -42,7 +51,11 @@ class PSPModule(nn.Module):
 
     def forward(self, feats):
         h, w = feats.size(2), feats.size(3)
-        priors = [F.interpolate(input=stage(feats), size=(h, w), mode='bilinear', align_corners=True) for stage in
-                  self.stages] + [feats]
+        priors = [
+            F.interpolate(
+                input=stage(feats), size=(h, w), mode="bilinear", align_corners=True
+            )
+            for stage in self.stages
+        ] + [feats]
         bottle = self.bottleneck(torch.cat(priors, 1))
         return bottle

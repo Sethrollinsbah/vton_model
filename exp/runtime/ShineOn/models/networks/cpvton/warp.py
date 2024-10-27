@@ -60,8 +60,8 @@ class FeatureExtraction(nn.Module):
         downconv = nn.Conv2d(input_nc, ngf, kernel_size=4, stride=2, padding=1)
         model = [downconv, nn.ReLU(True), norm_layer(ngf)]
         for i in range(n_layers):
-            in_ngf = 2 ** i * ngf if 2 ** i * ngf < 512 else 512
-            out_ngf = 2 ** (i + 1) * ngf if 2 ** i * ngf < 512 else 512
+            in_ngf = 2**i * ngf if 2**i * ngf < 512 else 512
+            out_ngf = 2 ** (i + 1) * ngf if 2**i * ngf < 512 else 512
             downconv = nn.Conv2d(in_ngf, out_ngf, kernel_size=4, stride=2, padding=1)
             model += [downconv, nn.ReLU(True)]
             model += [norm_layer(out_ngf)]
@@ -220,9 +220,9 @@ class TpsGridGen(nn.Module):
         P_dist_squared = torch.pow(Xmat - Xmat.transpose(0, 1), 2) + torch.pow(
             Ymat - Ymat.transpose(0, 1), 2
         )
-        P_dist_squared[
-            P_dist_squared == 0
-        ] = 1  # make diagonal 1 to avoid NaN in log computation
+        P_dist_squared[P_dist_squared == 0] = (
+            1  # make diagonal 1 to avoid NaN in log computation
+        )
         K = torch.mul(P_dist_squared, torch.log(P_dist_squared))
         # construct matrix L
         O = torch.FloatTensor(N, 1).fill_(1)

@@ -66,20 +66,27 @@ class MobileNetV2_dynamicFPN(nn.Module):
 
         # First layer
         self.first_layer = nn.Sequential(
-            nn.Conv2d(input_nc, self.input_channel, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(
+                input_nc,
+                self.input_channel,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=False,
+            ),
             nn.BatchNorm2d(self.input_channel),
             nn.ReLU6(inplace=True),
         )
 
         # Inverted residual blocks (each n layers)
         self.inverted_residual_setting = [
-            {'expansion_factor': 1, 'width_factor': 16, 'n': 1, 'stride': 1},
-            {'expansion_factor': 6, 'width_factor': 24, 'n': 1, 'stride': 2},
-            {'expansion_factor': 6, 'width_factor': 32, 'n': 1, 'stride': 2},
-            {'expansion_factor': 6, 'width_factor': 64, 'n': 1, 'stride': 2},
-            {'expansion_factor': 6, 'width_factor': 96, 'n': 1, 'stride': 2},
-            {'expansion_factor': 6, 'width_factor': 160, 'n': 1, 'stride': 2},
-            {'expansion_factor': 6, 'width_factor': 320, 'n': 1, 'stride': 1},
+            {"expansion_factor": 1, "width_factor": 16, "n": 1, "stride": 1},
+            {"expansion_factor": 6, "width_factor": 24, "n": 1, "stride": 2},
+            {"expansion_factor": 6, "width_factor": 32, "n": 1, "stride": 2},
+            {"expansion_factor": 6, "width_factor": 64, "n": 1, "stride": 2},
+            {"expansion_factor": 6, "width_factor": 96, "n": 1, "stride": 2},
+            {"expansion_factor": 6, "width_factor": 160, "n": 1, "stride": 2},
+            {"expansion_factor": 6, "width_factor": 320, "n": 1, "stride": 1},
         ]
         # self.inverted_residual_setting = [
         #     {'expansion_factor': 1, 'width_factor': 16, 'n': 1, 'stride': 1},
@@ -104,7 +111,7 @@ class MobileNetV2_dynamicFPN(nn.Module):
         # Top layer
         # input channels = last width factor
         self.top_layer = nn.Conv2d(
-            int(self.inverted_residual_setting[-1]['width_factor'] * self.width_mult),
+            int(self.inverted_residual_setting[-1]["width_factor"] * self.width_mult),
             256,
             kernel_size=1,
             stride=1,
@@ -115,12 +122,14 @@ class MobileNetV2_dynamicFPN(nn.Module):
         # exclude last setting as this lateral connection is the the top layer
         # build layer only if resulution has decreases (stride > 1)
         self.lateral_setting = [
-            setting for setting in self.inverted_residual_setting[:-1] if setting['stride'] > 1
+            setting
+            for setting in self.inverted_residual_setting[:-1]
+            if setting["stride"] > 1
         ]
         self.lateral_layers = nn.ModuleList(
             [
                 nn.Conv2d(
-                    int(setting['width_factor'] * self.width_mult),
+                    int(setting["width_factor"] * self.width_mult),
                     256,
                     kernel_size=1,
                     stride=1,
@@ -133,7 +142,8 @@ class MobileNetV2_dynamicFPN(nn.Module):
         # Smooth layers
         # n = lateral layers + 1 for top layer
         self.smooth_layers = nn.ModuleList(
-            [nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)] * (len(self.lateral_layers))
+            [nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)]
+            * (len(self.lateral_layers))
         )
 
         self._initialize_weights()
@@ -146,14 +156,16 @@ class MobileNetV2_dynamicFPN(nn.Module):
             if i != 0:
                 stride = 1
             inverted_residual_block.append(
-                InvertedResidual(self.input_channel, output_channel, stride, expansion_factor)
+                InvertedResidual(
+                    self.input_channel, output_channel, stride, expansion_factor
+                )
             )
             self.input_channel = output_channel
 
         return nn.Sequential(*inverted_residual_block)
 
     def _upsample_add(self, x, y):
-        '''Upsample and add two feature maps.
+        """Upsample and add two feature maps.
         Args:
           x: (Variable) top feature map to be upsampled.
           y: (Variable) lateral feature map.
@@ -167,9 +179,9 @@ class MobileNetV2_dynamicFPN(nn.Module):
         conv2d feature map size: [N,_,8,8] ->
         upsampled feature map size: [N,_,16,16]
         So we choose bilinear upsample which supports arbitrary output sizes.
-        '''
+        """
         _, _, H, W = y.size()
-        return F.upsample(x, size=(H, W), mode='bilinear', align_corners=False) + y
+        return F.upsample(x, size=(H, W), mode="bilinear", align_corners=False) + y
 
     def _initialize_weights(self):
         for m in self.modules():
@@ -198,11 +210,13 @@ class MobileNetV2_dynamicFPN(nn.Module):
         for i, block in enumerate(self.inverted_residual_blocks):
             # print(i, block)
             output = block(x)  # run block of mobile_net_V2
-            if self.inverted_residual_setting[i]['stride'] > 1 and n_lateral_connections < len(
-                self.lateral_layers
-            ):
+            if self.inverted_residual_setting[i][
+                "stride"
+            ] > 1 and n_lateral_connections < len(self.lateral_layers):
                 # print('DO:', self.lateral_layers[n_lateral_connections])
-                lateral_tensors.append(self.lateral_layers[n_lateral_connections](output))
+                lateral_tensors.append(
+                    self.lateral_layers[n_lateral_connections](output)
+                )
                 n_lateral_connections += 1
             x = output
 
@@ -221,7 +235,8 @@ class MobileNetV2_dynamicFPN(nn.Module):
         # smooth all m_layers
         assert len(self.smooth_layers) == len(m_layers)
         p_layers = [
-            smooth_layer(m_layer) for smooth_layer, m_layer in zip(self.smooth_layers, m_layers)
+            smooth_layer(m_layer)
+            for smooth_layer, m_layer in zip(self.smooth_layers, m_layers)
         ]
 
         return p_layers[::-1]

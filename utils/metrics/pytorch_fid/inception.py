@@ -10,7 +10,7 @@ except ImportError:
 
 # Inception weights ported to Pytorch from
 # http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz
-FID_WEIGHTS_URL = 'https://github.com/mseitzer/pytorch-fid/releases/download/fid_weights/pt_inception-2015-12-05-6726825d.pth'  # noqa: E501
+FID_WEIGHTS_URL = "https://github.com/mseitzer/pytorch-fid/releases/download/fid_weights/pt_inception-2015-12-05-6726825d.pth"  # noqa: E501
 
 
 class InceptionV3(nn.Module):
@@ -73,14 +73,14 @@ class InceptionV3(nn.Module):
         self.output_blocks = sorted(output_blocks)
         self.last_needed_block = max(output_blocks)
 
-        assert self.last_needed_block <= 3, 'Last possible output block index is 3'
+        assert self.last_needed_block <= 3, "Last possible output block index is 3"
 
         self.blocks = nn.ModuleList()
 
         if use_fid_inception:
             inception = fid_inception_v3()
         else:
-            inception = _inception_v3(weights='DEFAULT')
+            inception = _inception_v3(weights="DEFAULT")
 
         # Block 0: input to maxpool1
         block0 = [
@@ -145,7 +145,7 @@ class InceptionV3(nn.Module):
         x = inp
 
         if self.resize_input:
-            x = F.interpolate(x, size=(299, 299), mode='bilinear', align_corners=False)
+            x = F.interpolate(x, size=(299, 299), mode="bilinear", align_corners=False)
 
         if self.normalize_input:
             x = 2 * x - 1  # Scale from range (0, 1) to range (-1, 1)
@@ -164,7 +164,7 @@ class InceptionV3(nn.Module):
 def _inception_v3(*args, **kwargs):
     """Wraps `torchvision.models.inception_v3`"""
     try:
-        version = tuple(map(int, torchvision.__version__.split('.')[:2]))
+        version = tuple(map(int, torchvision.__version__.split(".")[:2]))
     except ValueError:
         # Just a caution against weird version strings
         version = (0,)
@@ -172,22 +172,22 @@ def _inception_v3(*args, **kwargs):
     # Skips default weight inititialization if supported by torchvision
     # version. See https://github.com/mseitzer/pytorch-fid/issues/28.
     if version >= (0, 6):
-        kwargs['init_weights'] = False
+        kwargs["init_weights"] = False
 
     # Backwards compatibility: `weights` argument was handled by `pretrained`
     # argument prior to version 0.13.
-    if version < (0, 13) and 'weights' in kwargs:
-        if kwargs['weights'] == 'DEFAULT':
-            kwargs['pretrained'] = True
-        elif kwargs['weights'] is None:
-            kwargs['pretrained'] = False
+    if version < (0, 13) and "weights" in kwargs:
+        if kwargs["weights"] == "DEFAULT":
+            kwargs["pretrained"] = True
+        elif kwargs["weights"] is None:
+            kwargs["pretrained"] = False
         else:
             raise ValueError(
-                'weights=={} not supported in torchvision {}'.format(
-                    kwargs['weights'], torchvision.__version__
+                "weights=={} not supported in torchvision {}".format(
+                    kwargs["weights"], torchvision.__version__
                 )
             )
-        del kwargs['weights']
+        del kwargs["weights"]
 
     return torchvision.models.inception_v3(*args, **kwargs)
 
@@ -235,7 +235,9 @@ class FIDInceptionA(torchvision.models.inception.InceptionA):
 
         # Patch: Tensorflow's average pool does not use the padded zero's in
         # its average calculation
-        branch_pool = F.avg_pool2d(x, kernel_size=3, stride=1, padding=1, count_include_pad=False)
+        branch_pool = F.avg_pool2d(
+            x, kernel_size=3, stride=1, padding=1, count_include_pad=False
+        )
         branch_pool = self.branch_pool(branch_pool)
 
         outputs = [branch1x1, branch5x5, branch3x3dbl, branch_pool]
@@ -263,7 +265,9 @@ class FIDInceptionC(torchvision.models.inception.InceptionC):
 
         # Patch: Tensorflow's average pool does not use the padded zero's in
         # its average calculation
-        branch_pool = F.avg_pool2d(x, kernel_size=3, stride=1, padding=1, count_include_pad=False)
+        branch_pool = F.avg_pool2d(
+            x, kernel_size=3, stride=1, padding=1, count_include_pad=False
+        )
         branch_pool = self.branch_pool(branch_pool)
 
         outputs = [branch1x1, branch7x7, branch7x7dbl, branch_pool]
@@ -296,7 +300,9 @@ class FIDInceptionE_1(torchvision.models.inception.InceptionE):
 
         # Patch: Tensorflow's average pool does not use the padded zero's in
         # its average calculation
-        branch_pool = F.avg_pool2d(x, kernel_size=3, stride=1, padding=1, count_include_pad=False)
+        branch_pool = F.avg_pool2d(
+            x, kernel_size=3, stride=1, padding=1, count_include_pad=False
+        )
         branch_pool = self.branch_pool(branch_pool)
 
         outputs = [branch1x1, branch3x3, branch3x3dbl, branch_pool]

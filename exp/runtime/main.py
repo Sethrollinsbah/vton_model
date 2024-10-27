@@ -11,6 +11,7 @@ from tqdm import tqdm
 # from PFAFN.raw import PFAFN
 # from FlowStyle.raw import FlowStyle
 from SRMGN.raw import SRMGN
+
 # from CDGNet.raw import CDGNet
 # from ShineOn.raw import ShineOn
 # from SDAFN.raw import SDAFN
@@ -80,7 +81,10 @@ def gen_input(model_id, device):
         return [torch.rand(1, 3, 473, 473).to(device)]
 
     elif model_id == SHINE_ON_ID:
-        return [torch.rand(1, 3, 256, 192).to(device), torch.rand(1, 7, 256, 192).to(device)]
+        return [
+            torch.rand(1, 3, 256, 192).to(device),
+            torch.rand(1, 7, 256, 192).to(device),
+        ]
 
     elif model_id == SDAFN_ID:
         ref_input = torch.rand(1, 6, 256, 192).to(device)
@@ -139,7 +143,9 @@ def gen_input(model_id, device):
 
 def run_once(model_id, device, measure_time=False):
     model = MODELS[model_id].eval().to(device)
-    mem_params = sum([param.nelement() * param.element_size() for param in model.parameters()])
+    mem_params = sum(
+        [param.nelement() * param.element_size() for param in model.parameters()]
+    )
     mem_bufs = sum([buf.nelement() * buf.element_size() for buf in model.buffers()])
     mem = mem_params + mem_bufs  # in bytes
     time_profile = PROFILES[model_id]

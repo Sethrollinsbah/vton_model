@@ -18,42 +18,58 @@ from models.warp_modules.style_afwm import StyleAFWM as PBAFWM
 from opt.train_opt import TrainOptions
 from utils.general import AverageMeter, print_log
 from utils.lr_utils import MyLRScheduler
-from utils.torch_utils import get_ckpt, load_ckpt, select_device, smart_optimizer, smart_resume
+from utils.torch_utils import (
+    get_ckpt,
+    load_ckpt,
+    select_device,
+    smart_optimizer,
+    smart_resume,
+)
 
 
 def train_batch(
-    data, models, optimizers, criterions, device, writer, global_step, sample_step, samples_dir
+    data,
+    models,
+    optimizers,
+    criterions,
+    device,
+    writer,
+    global_step,
+    sample_step,
+    samples_dir,
 ):
     batch_start_time = time.time()
 
-    warp_model, gen_model = models['warp'], models['gen']
-    warp_optimizer, gen_optimizer = optimizers['warp'], optimizers['gen']
-    criterionL1, criterionVGG = criterions['L1'], criterions['VGG']
+    warp_model, gen_model = models["warp"], models["gen"]
+    warp_optimizer, gen_optimizer = optimizers["warp"], optimizers["gen"]
+    criterionL1, criterionVGG = criterions["L1"], criterions["VGG"]
 
-    t_mask = torch.FloatTensor((data['label'].cpu().numpy() == 7).astype(np.float64))
-    data['label'] = data['label'] * (1 - t_mask) + t_mask * 4
-    edge = data['edge']
+    t_mask = torch.FloatTensor((data["label"].cpu().numpy() == 7).astype(np.float64))
+    data["label"] = data["label"] * (1 - t_mask) + t_mask * 4
+    edge = data["edge"]
     pre_clothes_edge = torch.FloatTensor((edge.detach().numpy() > 0.5).astype(np.int64))
-    clothes = data['color']
+    clothes = data["color"]
     clothes = clothes * pre_clothes_edge
-    person_clothes_edge = torch.FloatTensor((data['label'].cpu().numpy() == 4).astype(np.int64))
-    real_image = data['image']
+    person_clothes_edge = torch.FloatTensor(
+        (data["label"].cpu().numpy() == 4).astype(np.int64)
+    )
+    real_image = data["image"]
     person_clothes = real_image * person_clothes_edge
-    pose = data['pose']
-    size = data['label'].size()
+    pose = data["pose"]
+    size = data["label"].size()
     oneHot_size1 = (size[0], 25, size[2], size[3])
     densepose = torch.cuda.FloatTensor(torch.Size(oneHot_size1), device=device).zero_()
-    densepose = densepose.scatter_(1, data['densepose'].data.long().to(device), 1.0)
-    densepose_fore = data['densepose'] / 24.0
+    densepose = densepose.scatter_(1, data["densepose"].data.long().to(device), 1.0)
+    densepose_fore = data["densepose"] / 24.0
     face_mask = torch.FloatTensor(
-        (data['label'].cpu().numpy() == 1).astype(np.int64)
-    ) + torch.FloatTensor((data['label'].cpu().numpy() == 12).astype(np.int64))
+        (data["label"].cpu().numpy() == 1).astype(np.int64)
+    ) + torch.FloatTensor((data["label"].cpu().numpy() == 12).astype(np.int64))
     other_clothes_mask = (
-        torch.FloatTensor((data['label'].cpu().numpy() == 5).astype(np.int64))
-        + torch.FloatTensor((data['label'].cpu().numpy() == 6).astype(np.int64))
-        + torch.FloatTensor((data['label'].cpu().numpy() == 8).astype(np.int64))
-        + torch.FloatTensor((data['label'].cpu().numpy() == 9).astype(np.int64))
-        + torch.FloatTensor((data['label'].cpu().numpy() == 10).astype(np.int64))
+        torch.FloatTensor((data["label"].cpu().numpy() == 5).astype(np.int64))
+        + torch.FloatTensor((data["label"].cpu().numpy() == 6).astype(np.int64))
+        + torch.FloatTensor((data["label"].cpu().numpy() == 8).astype(np.int64))
+        + torch.FloatTensor((data["label"].cpu().numpy() == 9).astype(np.int64))
+        + torch.FloatTensor((data["label"].cpu().numpy() == 10).astype(np.int64))
     )
     face_img = face_mask * real_image
     other_clothes_img = other_clothes_mask * real_image
@@ -61,28 +77,32 @@ def train_batch(
     preserve_mask = torch.cat([face_mask, other_clothes_mask], 1)
     concat = torch.cat([preserve_mask.to(device), densepose, pose.to(device)], 1)
     arm_mask = torch.FloatTensor(
-        (data['label'].cpu().numpy() == 11).astype(np.float64)
-    ) + torch.FloatTensor((data['label'].cpu().numpy() == 13).astype(np.float64))
+        (data["label"].cpu().numpy() == 11).astype(np.float64)
+    ) + torch.FloatTensor((data["label"].cpu().numpy() == 13).astype(np.float64))
     hand_mask = torch.FloatTensor(
-        (data['densepose'].cpu().numpy() == 3).astype(np.int64)
-    ) + torch.FloatTensor((data['densepose'].cpu().numpy() == 4).astype(np.int64))
+        (data["densepose"].cpu().numpy() == 3).astype(np.int64)
+    ) + torch.FloatTensor((data["densepose"].cpu().numpy() == 4).astype(np.int64))
     hand_mask = arm_mask * hand_mask
     hand_img = hand_mask * real_image
     dense_preserve_mask = (
-        torch.FloatTensor((data['densepose'].cpu().numpy() == 15).astype(np.int64))
-        + torch.FloatTensor((data['densepose'].cpu().numpy() == 16).astype(np.int64))
-        + torch.FloatTensor((data['densepose'].cpu().numpy() == 17).astype(np.int64))
-        + torch.FloatTensor((data['densepose'].cpu().numpy() == 18).astype(np.int64))
-        + torch.FloatTensor((data['densepose'].cpu().numpy() == 19).astype(np.int64))
-        + torch.FloatTensor((data['densepose'].cpu().numpy() == 20).astype(np.int64))
-        + torch.FloatTensor((data['densepose'].cpu().numpy() == 21).astype(np.int64))
-        + torch.FloatTensor(data['densepose'].cpu().numpy() == 22)
+        torch.FloatTensor((data["densepose"].cpu().numpy() == 15).astype(np.int64))
+        + torch.FloatTensor((data["densepose"].cpu().numpy() == 16).astype(np.int64))
+        + torch.FloatTensor((data["densepose"].cpu().numpy() == 17).astype(np.int64))
+        + torch.FloatTensor((data["densepose"].cpu().numpy() == 18).astype(np.int64))
+        + torch.FloatTensor((data["densepose"].cpu().numpy() == 19).astype(np.int64))
+        + torch.FloatTensor((data["densepose"].cpu().numpy() == 20).astype(np.int64))
+        + torch.FloatTensor((data["densepose"].cpu().numpy() == 21).astype(np.int64))
+        + torch.FloatTensor(data["densepose"].cpu().numpy() == 22)
     )
-    dense_preserve_mask = dense_preserve_mask.to(device) * (1 - person_clothes_edge.to(device))
+    dense_preserve_mask = dense_preserve_mask.to(device) * (
+        1 - person_clothes_edge.to(device)
+    )
     preserve_region = face_img + other_clothes_img + hand_img
 
-    with cupy.cuda.Device(int(device.split(':')[-1])):
-        flow_out = warp_model(concat.to(device), clothes.to(device), pre_clothes_edge.to(device))
+    with cupy.cuda.Device(int(device.split(":")[-1])):
+        flow_out = warp_model(
+            concat.to(device), clothes.to(device), pre_clothes_edge.to(device)
+        )
     (
         warped_cloth,
         last_flow,
@@ -102,10 +122,10 @@ def train_batch(
 
     for num in range(5):
         cur_person_clothes = F.interpolate(
-            person_clothes, scale_factor=0.5 ** (4 - num), mode='bilinear'
+            person_clothes, scale_factor=0.5 ** (4 - num), mode="bilinear"
         )
         cur_person_clothes_edge = F.interpolate(
-            person_clothes_edge, scale_factor=0.5 ** (4 - num), mode='bilinear'
+            person_clothes_edge, scale_factor=0.5 ** (4 - num), mode="bilinear"
         )
         loss_l1 = criterionL1(x_all[num], cur_person_clothes.to(device))
         loss_vgg = criterionVGG(x_all[num], cur_person_clothes.to(device))
@@ -128,7 +148,13 @@ def train_batch(
 
     warped_prod_edge = x_edge_all[4]
     gen_inputs = torch.cat(
-        [preserve_region.to(device), warped_cloth, warped_prod_edge, dense_preserve_mask], 1
+        [
+            preserve_region.to(device),
+            warped_cloth,
+            warped_prod_edge,
+            dense_preserve_mask,
+        ],
+        1,
     )
 
     gen_outputs = gen_model(gen_inputs)
@@ -167,12 +193,19 @@ def train_batch(
         b = person_clothes.to(device)
         c = clothes.to(device)
         d = torch.cat(
-            [densepose_fore.to(device), densepose_fore.to(device), densepose_fore.to(device)], 1
+            [
+                densepose_fore.to(device),
+                densepose_fore.to(device),
+                densepose_fore.to(device),
+            ],
+            1,
         )
         e = warped_cloth
         f = torch.cat([warped_prod_edge, warped_prod_edge, warped_prod_edge], 1)
         g = preserve_region.to(device)
-        h = torch.cat([dense_preserve_mask, dense_preserve_mask, dense_preserve_mask], 1)
+        h = torch.cat(
+            [dense_preserve_mask, dense_preserve_mask, dense_preserve_mask], 1
+        )
         i = p_rendered
         j = torch.cat([m_composite, m_composite, m_composite], 1)
         k = p_tryon
@@ -180,10 +213,10 @@ def train_batch(
             [a[0], b[0], c[0], d[0], e[0], f[0], g[0], h[0], i[0], j[0], k[0]], 2
         ).squeeze()
         cv_img = (combine.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
-        writer.add_image('combine', (combine.data + 1) / 2.0, global_step)
+        writer.add_image("combine", (combine.data + 1) / 2.0, global_step)
         rgb = (cv_img * 255).astype(np.uint8)
         bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(str(samples_dir / f'{global_step}.jpg'), bgr)
+        cv2.imwrite(str(samples_dir / f"{global_step}.jpg"), bgr)
 
     return loss_all.item(), loss_warp.item(), loss_gen.item(), train_batch_time
 
@@ -193,9 +226,9 @@ def train_pb_e2e(opt):
     writer = SummaryWriter(opt.save_dir)
 
     # Directories
-    log_path = Path(opt.save_dir) / 'log.txt'
-    weights_dir = Path(opt.save_dir) / 'weights'  # weights dir
-    samples_dir = Path(opt.save_dir) / 'samples'  # samples dir
+    log_path = Path(opt.save_dir) / "log.txt"
+    weights_dir = Path(opt.save_dir) / "weights"  # weights dir
+    samples_dir = Path(opt.save_dir) / "samples"  # samples dir
     weights_dir.mkdir(parents=True, exist_ok=True)  # make dir
     samples_dir.mkdir(parents=True, exist_ok=True)  # make dir
 
@@ -206,11 +239,15 @@ def train_pb_e2e(opt):
     warp_model = PBAFWM(45, opt.align_corners).to(device)
     warp_ckpt = get_ckpt(opt.pb_warp_checkpoint)
     load_ckpt(warp_model, warp_ckpt)
-    print_log(log_path, f'Load pretrained parser-based warp from {opt.pb_warp_checkpoint}')
+    print_log(
+        log_path, f"Load pretrained parser-based warp from {opt.pb_warp_checkpoint}"
+    )
     gen_model = ResUnetGenerator(8, 4, 5, ngf=64, norm_layer=nn.BatchNorm2d).to(device)
     gen_ckpt = get_ckpt(opt.pb_gen_checkpoint)
     load_ckpt(gen_model, gen_ckpt)
-    print_log(log_path, f'Load pretrained parser-based gen from {opt.pb_gen_checkpoint}')
+    print_log(
+        log_path, f"Load pretrained parser-based gen from {opt.pb_gen_checkpoint}"
+    )
 
     # Optimizer
     warp_optimizer = smart_optimizer(
@@ -223,7 +260,9 @@ def train_pb_e2e(opt):
     # Resume
     if opt.resume:
         if warp_ckpt:
-            _ = smart_resume(warp_ckpt, warp_optimizer, opt.pb_warp_checkpoint, epoch_num=epoch_num)
+            _ = smart_resume(
+                warp_ckpt, warp_optimizer, opt.pb_warp_checkpoint, epoch_num=epoch_num
+            )
         if gen_ckpt:  # resume with information of gen_model
             start_epoch = smart_resume(
                 gen_ckpt, gen_optimizer, opt.pb_gen_checkpoint, epoch_num=epoch_num
@@ -233,11 +272,15 @@ def train_pb_e2e(opt):
 
     # Scheduler
     last_epoch = start_epoch - 1
-    gen_scheduler = MyLRScheduler(gen_optimizer, last_epoch, opt.niter, opt.niter_decay, False)
-    warp_scheduler = MyLRScheduler(warp_optimizer, last_epoch, opt.niter, opt.niter_decay, False)
+    gen_scheduler = MyLRScheduler(
+        gen_optimizer, last_epoch, opt.niter, opt.niter_decay, False
+    )
+    warp_scheduler = MyLRScheduler(
+        warp_optimizer, last_epoch, opt.niter, opt.niter_decay, False
+    )
 
     # Dataloader
-    train_data = LoadVITONDataset(path=opt.dataroot, phase='train', size=(256, 192))
+    train_data = LoadVITONDataset(path=opt.dataroot, phase="train", size=(256, 192))
     train_loader = DataLoader(
         train_data,
         batch_size=opt.batch_size,
@@ -267,12 +310,14 @@ def train_pb_e2e(opt):
         gen_model.train()
         epoch_start_time = time.time()
 
-        for idx, data in enumerate(train_loader):  # batch -----------------------------------------
+        for idx, data in enumerate(
+            train_loader
+        ):  # batch -----------------------------------------
             loss_all, loss_warp, loss_gen, train_batch_time = train_batch(
                 data,
-                models={'warp': warp_model, 'gen': gen_model},
-                optimizers={'warp': warp_optimizer, 'gen': gen_optimizer},
-                criterions={'L1': criterionL1, 'VGG': criterionVGG},
+                models={"warp": warp_model, "gen": gen_model},
+                optimizers={"warp": warp_optimizer, "gen": gen_optimizer},
+                criterions={"L1": criterionL1, "VGG": criterionVGG},
                 device=device,
                 writer=writer,
                 global_step=global_step,
@@ -288,11 +333,13 @@ def train_pb_e2e(opt):
 
             # Logging
             eta_meter.update(train_batch_time)
-            now = datetime.datetime.now().strftime('%Y.%m.%d-%H:%M:%S')
+            now = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
             if global_step % opt.print_step == 0:
-                eta_sec = ((epoch_num + 1 - epoch) * len(train_loader) - idx - 1) * eta_meter.avg
+                eta_sec = (
+                    (epoch_num + 1 - epoch) * len(train_loader) - idx - 1
+                ) * eta_meter.avg
                 eta_sec_format = str(datetime.timedelta(seconds=int(eta_sec)))
-                strs = '[{}]: [epoch-{}/{}]--[global_step-{}/{}-{:.2%}]--[loss-{:.6f}: warp-{:.6f}, gen-{:.6f}]--[lr: warp-{}, gen-{}]--[eta-{}]'.format(  # noqa: E501
+                strs = "[{}]: [epoch-{}/{}]--[global_step-{}/{}-{:.2%}]--[loss-{:.6f}: warp-{:.6f}, gen-{:.6f}]--[lr: warp-{}, gen-{}]--[eta-{}]".format(  # noqa: E501
                     now,
                     epoch,
                     epoch_num,
@@ -302,8 +349,8 @@ def train_pb_e2e(opt):
                     steps_loss / opt.print_step,
                     steps_warp_loss / opt.print_step,
                     steps_gen_loss / opt.print_step,
-                    ['%.6f' % group['lr'] for group in warp_optimizer.param_groups],
-                    ['%.6f' % group['lr'] for group in gen_optimizer.param_groups],
+                    ["%.6f" % group["lr"] for group in warp_optimizer.param_groups],
+                    ["%.6f" % group["lr"] for group in gen_optimizer.param_groups],
                     eta_sec_format,
                 )
                 print_log(log_path, strs)
@@ -323,36 +370,42 @@ def train_pb_e2e(opt):
         train_warp_loss /= len(train_loader)
         train_gen_loss /= len(train_loader)
         train_loss /= len(train_loader)
-        writer.add_scalar('train_warp_loss', train_warp_loss, epoch)
-        writer.add_scalar('train_gen_loss', train_gen_loss, epoch)
-        writer.add_scalar('train_loss', train_loss, epoch)
+        writer.add_scalar("train_warp_loss", train_warp_loss, epoch)
+        writer.add_scalar("train_gen_loss", train_gen_loss, epoch)
+        writer.add_scalar("train_loss", train_loss, epoch)
 
         # Save model
         warp_ckpt = {
-            'epoch': epoch,
-            'model': warp_model.state_dict(),
-            'optimizer': warp_optimizer.state_dict(),
+            "epoch": epoch,
+            "model": warp_model.state_dict(),
+            "optimizer": warp_optimizer.state_dict(),
         }
         gen_ckpt = {
-            'epoch': epoch,
-            'model': gen_model.state_dict(),
-            'optimizer': gen_optimizer.state_dict(),
+            "epoch": epoch,
+            "model": gen_model.state_dict(),
+            "optimizer": gen_optimizer.state_dict(),
         }
-        torch.save(warp_ckpt, weights_dir / 'pb_warp_last.pt')
-        torch.save(gen_ckpt, weights_dir / 'pb_gen_last.pt')
+        torch.save(warp_ckpt, weights_dir / "pb_warp_last.pt")
+        torch.save(gen_ckpt, weights_dir / "pb_gen_last.pt")
         if epoch % opt.save_period == 0:
-            torch.save(warp_ckpt, weights_dir / 'pb_warp_epoch_{epoch}.pt')
-            torch.save(gen_ckpt, weights_dir / 'pb_gen_epoch_{epoch}.pt')
+            torch.save(warp_ckpt, weights_dir / "pb_warp_epoch_{epoch}.pt")
+            torch.save(gen_ckpt, weights_dir / "pb_gen_epoch_{epoch}.pt")
             print_log(
                 log_path,
-                'Save the model at the end of epoch %d, iters %d' % (epoch, global_step - 1),
+                "Save the model at the end of epoch %d, iters %d"
+                % (epoch, global_step - 1),
             )
         del warp_ckpt, gen_ckpt
 
         print_log(
             log_path,
-            'End of epoch %d / %d: train_loss: %.3f \t time: %d sec'
-            % (epoch, opt.niter + opt.niter_decay, train_loss, time.time() - epoch_start_time),
+            "End of epoch %d / %d: train_loss: %.3f \t time: %d sec"
+            % (
+                epoch,
+                opt.niter + opt.niter_decay,
+                train_loss,
+                time.time() - epoch_start_time,
+            ),
         )
 
         train_warp_loss = 0
@@ -362,14 +415,16 @@ def train_pb_e2e(opt):
     # end training --------------------------------------------------------------------------------
     print_log(
         log_path,
-        (f'\n{epoch - start_epoch + 1} epochs completed in {(time.time() - t0) / 3600:.3f} hours.'),
+        (
+            f"\n{epoch - start_epoch + 1} epochs completed in {(time.time() - t0) / 3600:.3f} hours."
+        ),
     )
-    print_log(log_path, f'Results are saved at {opt.save_dir}')
+    print_log(log_path, f"Results are saved at {opt.save_dir}")
 
     with torch.cuda.device(device):
         torch.cuda.empty_cache()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     opt = TrainOptions().parse_opt()
     train_pb_e2e(opt)

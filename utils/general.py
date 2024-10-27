@@ -8,7 +8,7 @@ from pathlib import Path
 
 class Profile(contextlib.ContextDecorator):
     """
-    YOLOv5 Profile class. 
+    YOLOv5 Profile class.
     Usage: 'with Profile():' or '@Profile()' decorator
     """
 
@@ -29,14 +29,14 @@ class Profile(contextlib.ContextDecorator):
         if self.cuda:
             torch.cuda.synchronize(self.device)
         return time.time()
-    
+
 
 class AverageMeter:
     """
     Computes and stores the average and current value
     Source: https://github.dev/PaddlePaddle/PaddleOCR/ppocr/utils/utility.py
     """
-    
+
     def __init__(self):
         self.reset()
 
@@ -55,13 +55,17 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-def yaml_save(file='data.yaml', data={}):
+def yaml_save(file="data.yaml", data={}):
     # Single-line safe yaml saving
-    with open(file, 'w') as f:
-        yaml.safe_dump({k: str(v) if isinstance(v, Path) else v for k, v in data.items()}, f, sort_keys=False)
+    with open(file, "w") as f:
+        yaml.safe_dump(
+            {k: str(v) if isinstance(v, Path) else v for k, v in data.items()},
+            f,
+            sort_keys=False,
+        )
 
 
-def increment_path(path: str, exist_ok: bool = False, sep: str = '') -> Path:
+def increment_path(path: str, exist_ok: bool = False, sep: str = "") -> Path:
     """
     Increments a path by adding a number to the end if it already exists.
 
@@ -75,10 +79,12 @@ def increment_path(path: str, exist_ok: bool = False, sep: str = '') -> Path:
     """
     path = Path(path)
     if path.exists() and not exist_ok:
-        path, suffix = (path.with_suffix(''), path.suffix) if path.is_file() else (path, '')
+        path, suffix = (
+            (path.with_suffix(""), path.suffix) if path.is_file() else (path, "")
+        )
 
         for n in range(1, 999):
-            p = f'{path}{sep}{n}{suffix}'
+            p = f"{path}{sep}{n}{suffix}"
             if not Path(p).exists():
                 path = Path(p)
                 break
@@ -93,11 +99,9 @@ def warm_up(model, **dummy_input):
 
 
 def print_log(log_path, content, to_print=True):
-    with open(log_path, 'a') as f:
-      f.write(content)
-      f.write('\n')
+    with open(log_path, "a") as f:
+        f.write(content)
+        f.write("\n")
 
     if to_print:
         print(content)
-
-    

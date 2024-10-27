@@ -28,11 +28,11 @@ class SelfAttention(nn.Module):
 
     def forward(self, x):
         """
-            inputs :
-                x : input feature maps( B X C X W X H)
-            returns :
-                out : self attention value + input feature
-                attention: B X N X N (N is Width*Height)
+        inputs :
+            x : input feature maps( B X C X W X H)
+        returns :
+            out : self attention value + input feature
+            attention: B X N X N (N is Width*Height)
         """
         m_batchsize, C, width, height = x.size()
         proj_query = (

@@ -101,7 +101,9 @@ class AttrEncoder(nn.Module):
         # 256x32x32 -> 64x64x64 -> 128x64x64
         attr4 = self.deconv4(attr3, feat1)
         # 128x64x64 -> 32x128x128 -> 64x128x128
-        attr5 = F.interpolate(attr4, scale_factor=2, mode='bilinear', align_corners=True)
+        attr5 = F.interpolate(
+            attr4, scale_factor=2, mode="bilinear", align_corners=True
+        )
         # 64x128x128 -> 64x256x256
         return attr1, attr2, attr3, attr4, attr5
 
@@ -122,14 +124,24 @@ class AttrDilatedEncoder(nn.Module):
         else:
             self.conv1 = conv4x4(in_nc, nf // 2)  # 2x
 
-        self.conv2 = conv4x4(nf // 2, nf, dilation=8, padding=get_pad(256, 4, 2, 8) + 1)  # 4x
-        self.conv3 = conv4x4(nf, nf * 2, dilation=4, padding=get_pad(128, 4, 2, 4) + 1)  # 8x
-        self.conv4 = conv4x4(nf * 2, nf * 4, dilation=2, padding=get_pad(64, 4, 2, 2) + 1)  # 16x
+        self.conv2 = conv4x4(
+            nf // 2, nf, dilation=8, padding=get_pad(256, 4, 2, 8) + 1
+        )  # 4x
+        self.conv3 = conv4x4(
+            nf, nf * 2, dilation=4, padding=get_pad(128, 4, 2, 4) + 1
+        )  # 8x
+        self.conv4 = conv4x4(
+            nf * 2, nf * 4, dilation=2, padding=get_pad(64, 4, 2, 2) + 1
+        )  # 16x
         self.conv5 = conv4x4(nf * 4, nf * 8)  # 32x
 
         self.deconv1 = deconv4x4(nf * 8, nf * 4)  # 16x
-        self.deconv2 = deconv4x4(nf * 8, nf * 2, dilation=3, padding=get_pad(64, 4, 2, 2) + 2)  # 8x
-        self.deconv3 = deconv4x4(nf * 4, nf, dilation=5, padding=get_pad(128, 4, 2, 4) + 2)  # 4x
+        self.deconv2 = deconv4x4(
+            nf * 8, nf * 2, dilation=3, padding=get_pad(64, 4, 2, 2) + 2
+        )  # 8x
+        self.deconv3 = deconv4x4(
+            nf * 4, nf, dilation=5, padding=get_pad(128, 4, 2, 4) + 2
+        )  # 4x
         self.deconv4 = deconv4x4(
             nf * 2, nf // 2, dilation=7, padding=get_pad(256, 4, 2, 8) - 1
         )  # 2x
@@ -149,7 +161,9 @@ class AttrDilatedEncoder(nn.Module):
         # 256x32x32 -> 64x64x64 -> 128x64x64
         attr4 = self.deconv4(attr3, feat1)
         # 128x64x64 -> 32x128x128 -> 64x128x128
-        attr5 = F.interpolate(attr4, scale_factor=2, mode='bilinear', align_corners=True)
+        attr5 = F.interpolate(
+            attr4, scale_factor=2, mode="bilinear", align_corners=True
+        )
         # 64x128x128 -> 64x256x256
         return attr1, attr2, attr3, attr4, attr5
 

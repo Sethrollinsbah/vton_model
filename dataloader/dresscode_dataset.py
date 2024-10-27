@@ -73,26 +73,26 @@ atr_label_map = {
 }
 
 lip_label_map = {
-    'background': 0,
-    'hat': 1,
-    'hair': 2,
-    'glove': 3,
-    'sunglasses': 4,
-    'upper_clothes': 5,
-    'dress': 6,
-    'coat': 7,
-    'socks': 8,
-    'pants': 9,
-    'jumpsuits': 10,
-    'scarf': 11,
-    'skirt': 12,
-    'face': 13,
-    'left_arm': 14,
-    'right_arm': 15,
-    'left_leg': 16,
-    'right_leg': 17,
-    'left_shoe': 18,
-    'right_shoe': 19,
+    "background": 0,
+    "hat": 1,
+    "hair": 2,
+    "glove": 3,
+    "sunglasses": 4,
+    "upper_clothes": 5,
+    "dress": 6,
+    "coat": 7,
+    "socks": 8,
+    "pants": 9,
+    "jumpsuits": 10,
+    "scarf": 11,
+    "skirt": 12,
+    "face": 13,
+    "left_arm": 14,
+    "right_arm": 15,
+    "left_leg": 16,
+    "right_leg": 17,
+    "left_shoe": 18,
+    "right_shoe": 19,
 }
 
 
@@ -101,8 +101,8 @@ class DressCodeDataset(data.Dataset):
         self,
         dataroot_path: str,
         phase: str,
-        order: str = 'paired',
-        category: List[str] = ['dresses', 'upper_body', 'lower_body'],
+        order: str = "paired",
+        category: List[str] = ["dresses", "upper_body", "lower_body"],
         size: Tuple[int, int] = (256, 192),
     ):
         """
@@ -126,9 +126,9 @@ class DressCodeDataset(data.Dataset):
         self.category = category
         self.height, self.width = size[0], size[1]
         self.radius = 5
-        self.transform_image = get_transform(train=(self.phase == 'train'))
+        self.transform_image = get_transform(train=(self.phase == "train"))
         self.transform_parse = get_transform(
-            train=(self.phase == 'train'), method=Image.NEAREST, normalize=False
+            train=(self.phase == "train"), method=Image.NEAREST, normalize=False
         )
 
         im_names = []
@@ -136,10 +136,10 @@ class DressCodeDataset(data.Dataset):
         dataroot_names = []
 
         for c in category:
-            assert c in ['dresses', 'upper_body', 'lower_body']
+            assert c in ["dresses", "upper_body", "lower_body"]
 
             dataroot = os.path.join(self.dataroot, c)
-            if phase == 'train':
+            if phase == "train":
                 filename = os.path.join(dataroot, f"{phase}_pairs.txt")
             else:
                 filename = os.path.join(dataroot, f"{phase}_pairs_{order}.txt")
@@ -167,29 +167,33 @@ class DressCodeDataset(data.Dataset):
         dataroot = self.dataroot_names[index]
 
         # Person image
-        im = Image.open(os.path.join(dataroot, 'images', im_name)).convert('RGB')
+        im = Image.open(os.path.join(dataroot, "images", im_name)).convert("RGB")
         im = im.resize((self.width, self.height))
         im = self.transform_image(im)  # [-1,1]
 
         # Clothing image
-        cloth = Image.open(os.path.join(dataroot, 'images', c_name)).convert('RGB')
+        cloth = Image.open(os.path.join(dataroot, "images", c_name)).convert("RGB")
         cloth = cloth.resize((self.width, self.height))
         cloth = self.transform_image(cloth)  # [-1,1]
 
         # Clothing edge
-        cloth_edge = Image.open(os.path.join(dataroot, 'edge', c_name)).convert('L')
+        cloth_edge = Image.open(os.path.join(dataroot, "edge", c_name)).convert("L")
         cloth_edge = cloth_edge.resize((self.width, self.height))
         cloth_edge = self.transform_parse(cloth_edge)  # [-1,1]
 
         # Unpaired clothing image
         un_index = np.random.randint(len(self.c_names))
         un_c_name = self.c_names[un_index]
-        un_cloth = Image.open(os.path.join(dataroot, 'images', un_c_name)).convert('RGB')
+        un_cloth = Image.open(os.path.join(dataroot, "images", un_c_name)).convert(
+            "RGB"
+        )
         un_cloth = un_cloth.resize((self.width, self.height))
         un_cloth = self.transform_image(un_cloth)  # [-1,1]
 
         # Unpaired Clothing edge
-        un_cloth_edge = Image.open(os.path.join(dataroot, 'edge', un_c_name)).convert('L')
+        un_cloth_edge = Image.open(os.path.join(dataroot, "edge", un_c_name)).convert(
+            "L"
+        )
         un_cloth_edge = un_cloth_edge.resize((self.width, self.height))
         un_cloth_edge = self.transform_parse(un_cloth_edge)  # [-1,1]
 
@@ -199,21 +203,23 @@ class DressCodeDataset(data.Dataset):
         # skeleton = self.transform(skeleton)
 
         # Label Map
-        parse_name = im_name.replace('_0.jpg', '_4.png')
-        im_parse = Image.open(os.path.join(dataroot, 'label_maps', parse_name))
+        parse_name = im_name.replace("_0.jpg", "_4.png")
+        im_parse = Image.open(os.path.join(dataroot, "label_maps", parse_name))
         im_parse = im_parse.resize((self.width, self.height), Image.NEAREST)
         im_parse = self.transform_parse(im_parse) * 255.0
         parse = torch.zeros(im_parse.shape)
         # Mapping
         for k, v in mapping.items():
             old_mask = (im_parse == k).float()
-            parse = parse * (1 - old_mask) + old_mask * v  # map value k to value v in new mask
+            parse = (
+                parse * (1 - old_mask) + old_mask * v
+            )  # map value k to value v in new mask
 
         # Load pose points
-        pose_name = im_name.replace('_0.jpg', '_2.json')
-        with open(os.path.join(dataroot, 'keypoints', pose_name)) as f:
+        pose_name = im_name.replace("_0.jpg", "_2.json")
+        with open(os.path.join(dataroot, "keypoints", pose_name)) as f:
             pose_label = json.load(f)
-            pose_data = pose_label['keypoints']
+            pose_data = pose_label["keypoints"]
             pose_data = np.array(pose_data)
             pose_data = pose_data.reshape((-1, 4))
 
@@ -221,46 +227,48 @@ class DressCodeDataset(data.Dataset):
         pose_map = torch.zeros(point_num, self.height, self.width)
         r = self.radius
         for i in range(point_num):
-            one_map = Image.new('L', (self.width, self.height))
+            one_map = Image.new("L", (self.width, self.height))
             draw = ImageDraw.Draw(one_map)
             point_x = np.multiply(pose_data[i, 0], self.width / 384.0)
             point_y = np.multiply(pose_data[i, 1], self.height / 512.0)
             if point_x > 1 and point_y > 1:
                 draw.rectangle(
-                    (point_x - r, point_y - r, point_x + r, point_y + r), 'white', 'white'
+                    (point_x - r, point_y - r, point_x + r, point_y + r),
+                    "white",
+                    "white",
                 )
-            one_map = self.transform_image(one_map.convert('RGB'))
+            one_map = self.transform_image(one_map.convert("RGB"))
             pose_map[i] = one_map[0]
 
         # Dense
         dense_mask = Image.open(
-            os.path.join(dataroot, 'dense', im_name.replace('_0.jpg', '_5.png'))
-        ).convert('L')
+            os.path.join(dataroot, "dense", im_name.replace("_0.jpg", "_5.png"))
+        ).convert("L")
         dense_mask = dense_mask.resize((self.width, self.height), Image.NEAREST)
         dense_mask = self.transform_parse(dense_mask) * 255.0
 
-        if self.phase == 'train':
+        if self.phase == "train":
             return {
-                'img_path': os.path.join(dataroot, 'images', im_name),
-                'color_path': os.path.join(dataroot, 'images', c_name),
-                'color_un_path': os.path.join(dataroot, 'images', un_c_name),
-                'path': os.path.join(dataroot, 'label_maps', parse_name),
-                'image': im,
-                'color': cloth,
-                'edge': cloth_edge,
-                'color_un': un_cloth,
-                'edge_un': un_cloth_edge,
-                'label': parse,
-                'pose': pose_map,
-                'densepose': dense_mask,
+                "img_path": os.path.join(dataroot, "images", im_name),
+                "color_path": os.path.join(dataroot, "images", c_name),
+                "color_un_path": os.path.join(dataroot, "images", un_c_name),
+                "path": os.path.join(dataroot, "label_maps", parse_name),
+                "image": im,
+                "color": cloth,
+                "edge": cloth_edge,
+                "color_un": un_cloth,
+                "edge_un": un_cloth_edge,
+                "label": parse,
+                "pose": pose_map,
+                "densepose": dense_mask,
             }
         else:
             return {
-                'image': im,
-                'color': cloth,
-                'edge': cloth_edge,
-                'p_name': im_name,
-                'c_name': c_name,
+                "image": im,
+                "color": cloth,
+                "edge": cloth_edge,
+                "p_name": im_name,
+                "c_name": c_name,
             }
 
     def __len__(self):
@@ -272,8 +280,8 @@ class DressCodeTestDataset(data.Dataset):
         self,
         dataroot_path: str,
         phase: str,
-        order: str = 'paired',
-        category: List[str] = ['dresses', 'upper_body', 'lower_body'],
+        order: str = "paired",
+        category: List[str] = ["dresses", "upper_body", "lower_body"],
         size: Tuple[int, int] = (256, 192),
     ):
         """
@@ -296,9 +304,9 @@ class DressCodeTestDataset(data.Dataset):
         self.phase = phase
         self.category = category
         self.height, self.width = size[0], size[1]
-        self.transform_image = get_transform(train=(self.phase == 'train'))
+        self.transform_image = get_transform(train=(self.phase == "train"))
         self.transform_parse = get_transform(
-            train=(self.phase == 'train'), method=Image.NEAREST, normalize=False
+            train=(self.phase == "train"), method=Image.NEAREST, normalize=False
         )
 
         im_names = []
@@ -306,10 +314,10 @@ class DressCodeTestDataset(data.Dataset):
         dataroot_names = []
 
         for c in category:
-            assert c in ['dresses', 'upper_body', 'lower_body']
+            assert c in ["dresses", "upper_body", "lower_body"]
 
             dataroot = os.path.join(self.dataroot, c)
-            if phase == 'train':
+            if phase == "train":
                 filename = os.path.join(dataroot, f"{phase}_pairs.txt")
             else:
                 filename = os.path.join(dataroot, f"{phase}_pairs_{order}.txt")
@@ -337,26 +345,26 @@ class DressCodeTestDataset(data.Dataset):
         dataroot = self.dataroot_names[index]
 
         # Person image
-        im = Image.open(os.path.join(dataroot, 'images', im_name)).convert('RGB')
+        im = Image.open(os.path.join(dataroot, "images", im_name)).convert("RGB")
         im = im.resize((self.width, self.height))
         im = self.transform_image(im)  # [-1,1]
 
         # Clothing image
-        cloth = Image.open(os.path.join(dataroot, 'images', c_name)).convert('RGB')
+        cloth = Image.open(os.path.join(dataroot, "images", c_name)).convert("RGB")
         cloth = cloth.resize((self.width, self.height))
         cloth = self.transform_image(cloth)  # [-1,1]
 
         # Clothing edge
-        cloth_edge = Image.open(os.path.join(dataroot, 'edge', c_name)).convert('L')
+        cloth_edge = Image.open(os.path.join(dataroot, "edge", c_name)).convert("L")
         cloth_edge = cloth_edge.resize((self.width, self.height))
         cloth_edge = self.transform_parse(cloth_edge)  # [-1,1]
 
         result = {
-            'image': im,
-            'clothes': cloth,
-            'edge': cloth_edge,
-            'p_name': im_name,
-            'c_name': c_name,
+            "image": im,
+            "clothes": cloth,
+            "edge": cloth_edge,
+            "p_name": im_name,
+            "c_name": c_name,
         }
 
         return result
@@ -370,7 +378,9 @@ def get_transform(train, method=Image.BICUBIC, normalize=True):
 
     # if opt.resize_or_crop == 'none':
     base = float(2**4)
-    transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base, method)))
+    transform_list.append(
+        transforms.Lambda(lambda img: __make_power_2(img, base, method))
+    )
 
     if train:
         transform_list.append(transforms.Lambda(lambda img: __flip(img, 0)))

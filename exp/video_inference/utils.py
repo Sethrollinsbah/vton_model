@@ -49,35 +49,36 @@ def get_params(opt, size):
     w, h = size
     new_h = h
     new_w = w
-    if opt.resize_or_crop == 'resize_and_crop':
-        new_h = new_w = opt.loadSize            
-    elif opt.resize_or_crop == 'scale_width_and_crop':
+    if opt.resize_or_crop == "resize_and_crop":
+        new_h = new_w = opt.loadSize
+    elif opt.resize_or_crop == "scale_width_and_crop":
         new_w = opt.loadSize
         new_h = opt.loadSize * h // w
 
     x = random.randint(0, np.maximum(0, new_w - opt.fineSize))
     y = random.randint(0, np.maximum(0, new_h - opt.fineSize))
-    
-    #flip = random.random() > 0.5
-    flip = 0
-    return {'crop_pos': (x, y), 'flip': flip}
 
-    
+    # flip = random.random() > 0.5
+    flip = 0
+    return {"crop_pos": (x, y), "flip": flip}
+
+
 def get_transform(method=Image.BICUBIC, normalize=True):
     transform_list = []
-    base = float(2 ** 4)
-    transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base, method)))
+    base = float(2**4)
+    transform_list.append(
+        transforms.Lambda(lambda img: __make_power_2(img, base, method))
+    )
 
     transform_list += [transforms.ToTensor()]
 
     if normalize:
-        transform_list += [transforms.Normalize((0.5, 0.5, 0.5),
-                                                (0.5, 0.5, 0.5))]
+        transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     return transforms.Compose(transform_list)
 
 
 def __make_power_2(img, base, method=Image.BICUBIC):
-    ow, oh = img.size        
+    ow, oh = img.size
     h = int(round(oh / base) * base)
     w = int(round(ow / base) * base)
     if (h == oh) and (w == ow):
@@ -95,6 +96,8 @@ def blending_fn(prev_mask, new_mask):
     x = t * t
 
     i = torch.ones_like(new_mask)
-    uncertainty = i - torch.minimum(i, x * (c1 + x * (c2 + x * (c3 + x * (c4 + x * c5)))))
+    uncertainty = i - torch.minimum(
+        i, x * (c1 + x * (c2 + x * (c3 + x * (c4 + x * c5))))
+    )
 
     return new_mask + (prev_mask - new_mask) * (uncertainty * 1)

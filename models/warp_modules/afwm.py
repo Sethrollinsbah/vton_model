@@ -11,17 +11,21 @@ from models.extractors.res_fpn import FeatureEncoder, RefinePyramid
 def apply_offset(offset):
     # Offset(B x 2 x H x W)
     sizes = list(offset.size()[2:])
-    grid_list = torch.meshgrid([torch.arange(size, device=offset.device) for size in sizes])
+    grid_list = torch.meshgrid(
+        [torch.arange(size, device=offset.device) for size in sizes]
+    )
     grid_list = reversed(grid_list)  # Two cordinates grid tensor
 
     # Apply offset
     grid_list = [
-        grid.float().unsqueeze(0) + offset[:, dim, ...] for dim, grid in enumerate(grid_list)
+        grid.float().unsqueeze(0) + offset[:, dim, ...]
+        for dim, grid in enumerate(grid_list)
     ]  # 2 tensor (B x H x W): [0: size - 1]
 
     # Normalize
     grid_list = [
-        grid / ((size - 1.0) / 2.0) - 1.0 for grid, size in zip(grid_list, reversed(sizes))
+        grid / ((size - 1.0) / 2.0) - 1.0
+        for grid, size in zip(grid_list, reversed(sizes))
     ]  # 2 tensor (B x H x W): [-1, 1]
 
     return torch.stack(grid_list, dim=-1)
@@ -48,11 +52,15 @@ class AFlowNet(nn.Module):
                     in_channels=64, out_channels=32, kernel_size=3, stride=1, padding=1
                 ),
                 torch.nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                torch.nn.Conv2d(in_channels=32, out_channels=2, kernel_size=3, stride=1, padding=1),
+                torch.nn.Conv2d(
+                    in_channels=32, out_channels=2, kernel_size=3, stride=1, padding=1
+                ),
             )
 
             netRefine_layer = torch.nn.Sequential(
-                torch.nn.Conv2d(2 * fpn_dim, out_channels=128, kernel_size=3, stride=1, padding=1),
+                torch.nn.Conv2d(
+                    2 * fpn_dim, out_channels=128, kernel_size=3, stride=1, padding=1
+                ),
                 torch.nn.LeakyReLU(inplace=False, negative_slope=0.1),
                 torch.nn.Conv2d(
                     in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1
@@ -62,7 +70,9 @@ class AFlowNet(nn.Module):
                     in_channels=64, out_channels=32, kernel_size=3, stride=1, padding=1
                 ),
                 torch.nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                torch.nn.Conv2d(in_channels=32, out_channels=2, kernel_size=3, stride=1, padding=1),
+                torch.nn.Conv2d(
+                    in_channels=32, out_channels=2, kernel_size=3, stride=1, padding=1
+                ),
             )
             self.netMain.append(netMain_layer)
             self.netRefine.append(netRefine_layer)
@@ -70,8 +80,10 @@ class AFlowNet(nn.Module):
         self.netMain = nn.ModuleList(self.netMain)
         self.netRefine = nn.ModuleList(self.netRefine)
 
-    def forward(self, x, x_warps, x_conds, x_edge=None, warp_feature=True, phase='train'):
-        if phase == 'train':
+    def forward(
+        self, x, x_warps, x_conds, x_edge=None, warp_feature=True, phase="train"
+    ):
+        if phase == "train":
             last_flow = None
             last_flow_all = []
             delta_list = []
@@ -104,8 +116,8 @@ class AFlowNet(nn.Module):
                     x_warp_after = F.grid_sample(
                         x_warp,
                         last_flow.detach().permute(0, 2, 3, 1),
-                        mode='bilinear',
-                        padding_mode='border',
+                        mode="bilinear",
+                        padding_mode="border",
                         align_corners=self.align_corners,
                     )
                 else:
@@ -124,8 +136,8 @@ class AFlowNet(nn.Module):
                     flow = F.grid_sample(
                         last_flow,
                         flow,
-                        mode='bilinear',
-                        padding_mode='border',
+                        mode="bilinear",
+                        padding_mode="border",
                         align_corners=self.align_corners,
                     )
                 else:
@@ -135,8 +147,8 @@ class AFlowNet(nn.Module):
                 x_warp = F.grid_sample(
                     x_warp,
                     flow.permute(0, 2, 3, 1),
-                    mode='bilinear',
-                    padding_mode='border',
+                    mode="bilinear",
+                    padding_mode="border",
                     align_corners=self.align_corners,
                 )
                 concat = torch.cat([x_warp, x_cond], 1)
@@ -146,32 +158,32 @@ class AFlowNet(nn.Module):
                 flow = F.grid_sample(
                     last_flow,
                     flow,
-                    mode='bilinear',
-                    padding_mode='border',
+                    mode="bilinear",
+                    padding_mode="border",
                     align_corners=self.align_corners,
                 )
 
-                last_flow = F.interpolate(flow, scale_factor=2, mode='bilinear')
+                last_flow = F.interpolate(flow, scale_factor=2, mode="bilinear")
                 last_flow_all.append(last_flow)
                 cur_x = F.interpolate(
-                    x, scale_factor=0.5 ** (len(x_warps) - 1 - i), mode='bilinear'
+                    x, scale_factor=0.5 ** (len(x_warps) - 1 - i), mode="bilinear"
                 )
                 cur_x_warp = F.grid_sample(
                     cur_x,
                     last_flow.permute(0, 2, 3, 1),
-                    mode='bilinear',
-                    padding_mode='border',
+                    mode="bilinear",
+                    padding_mode="border",
                     align_corners=self.align_corners,
                 )
                 x_all.append(cur_x_warp)
                 cur_x_edge = F.interpolate(
-                    x_edge, scale_factor=0.5 ** (len(x_warps) - 1 - i), mode='bilinear'
+                    x_edge, scale_factor=0.5 ** (len(x_warps) - 1 - i), mode="bilinear"
                 )
                 cur_x_warp_edge = F.grid_sample(
                     cur_x_edge,
                     last_flow.permute(0, 2, 3, 1),
-                    mode='bilinear',
-                    padding_mode='zeros',
+                    mode="bilinear",
+                    padding_mode="zeros",
                     align_corners=self.align_corners,
                 )
                 x_edge_all.append(cur_x_warp_edge)
@@ -184,8 +196,8 @@ class AFlowNet(nn.Module):
             x_warp = F.grid_sample(
                 x,
                 last_flow.permute(0, 2, 3, 1),
-                mode='bilinear',
-                padding_mode='border',
+                mode="bilinear",
+                padding_mode="border",
                 align_corners=self.align_corners,
             )
             return (
@@ -201,7 +213,7 @@ class AFlowNet(nn.Module):
                 delta_y_all,
             )
 
-        elif phase == 'test':
+        elif phase == "test":
             last_flow = None
 
             for i in range(len(x_warps)):
@@ -213,8 +225,8 @@ class AFlowNet(nn.Module):
                     x_warp_after = F.grid_sample(
                         x_warp,
                         last_flow.detach().permute(0, 2, 3, 1),
-                        mode='bilinear',
-                        padding_mode='border',
+                        mode="bilinear",
+                        padding_mode="border",
                         align_corners=self.align_corners,
                     )
                 else:
@@ -237,8 +249,8 @@ class AFlowNet(nn.Module):
                     flow = F.grid_sample(
                         last_flow,
                         flow,
-                        mode='bilinear',
-                        padding_mode='border',
+                        mode="bilinear",
+                        padding_mode="border",
                         align_corners=self.align_corners,
                     )
                 else:
@@ -250,8 +262,8 @@ class AFlowNet(nn.Module):
                 x_warp = F.grid_sample(
                     x_warp,
                     flow.permute(0, 2, 3, 1),
-                    mode='bilinear',
-                    padding_mode='border',
+                    mode="bilinear",
+                    padding_mode="border",
                     align_corners=self.align_corners,
                 )
 
@@ -267,19 +279,19 @@ class AFlowNet(nn.Module):
                 flow = F.grid_sample(
                     last_flow,
                     flow,
-                    mode='bilinear',
-                    padding_mode='border',
+                    mode="bilinear",
+                    padding_mode="border",
                     align_corners=self.align_corners,
                 )
 
-                last_flow = F.interpolate(flow, scale_factor=2, mode='bilinear')
+                last_flow = F.interpolate(flow, scale_factor=2, mode="bilinear")
 
             # with style_dt[3]:
             x_warp = F.grid_sample(
                 x,
                 last_flow.permute(0, 2, 3, 1),
-                mode='bilinear',
-                padding_mode='border',
+                mode="bilinear",
+                padding_mode="border",
                 align_corners=self.align_corners,
             )
 
@@ -297,15 +309,20 @@ class AFWM(BaseModel):
 
         self.aflow_net = AFlowNet(len(num_filters), align_corners=align_corners)
 
-    def forward(self, cond_input, image_input, image_edge=None, phase='train'):
-        assert phase in ['train', 'test'], f'ERROR: phase can only be train or test, not {phase}'
+    def forward(self, cond_input, image_input, image_edge=None, phase="train"):
+        assert phase in [
+            "train",
+            "test",
+        ], f"ERROR: phase can only be train or test, not {phase}"
 
         # TODO: Refactor to nn.Sequential
         cond_pyramids = self.cond_FPN(self.cond_features(cond_input))
         image_pyramids = self.image_FPN(self.image_features(image_input))
 
-        if phase == 'train':
-            assert image_edge is not None, 'ERROR: image_edge cannot be None when phase is train'
+        if phase == "train":
+            assert (
+                image_edge is not None
+            ), "ERROR: image_edge cannot be None when phase is train"
             (
                 x_warp,
                 last_flow,
@@ -317,7 +334,9 @@ class AFWM(BaseModel):
                 x_edge_all,
                 delta_x_all,
                 delta_y_all,
-            ) = self.aflow_net(image_input, image_pyramids, cond_pyramids, image_edge, phase=phase)
+            ) = self.aflow_net(
+                image_input, image_pyramids, cond_pyramids, image_edge, phase=phase
+            )
             return (
                 x_warp,
                 last_flow,
@@ -330,6 +349,8 @@ class AFWM(BaseModel):
                 delta_x_all,
                 delta_y_all,
             )
-        elif phase == 'test':
-            x_warp, last_flow = self.aflow_net(image_input, image_pyramids, cond_pyramids, phase=phase)
+        elif phase == "test":
+            x_warp, last_flow = self.aflow_net(
+                image_input, image_pyramids, cond_pyramids, phase=phase
+            )
             return x_warp, last_flow

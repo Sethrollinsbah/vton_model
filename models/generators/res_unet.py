@@ -52,10 +52,18 @@ class ResUnetSkipConnectionBlock(nn.Module):
 
         if input_nc is None:
             input_nc = outer_nc
-        downconv = nn.Conv2d(input_nc, inner_nc, kernel_size=3, stride=2, padding=1, bias=use_bias)
+        downconv = nn.Conv2d(
+            input_nc, inner_nc, kernel_size=3, stride=2, padding=1, bias=use_bias
+        )
         # add two resblock
-        res_downconv = [ResidualBlock(inner_nc, norm_layer), ResidualBlock(inner_nc, norm_layer)]
-        res_upconv = [ResidualBlock(outer_nc, norm_layer), ResidualBlock(outer_nc, norm_layer)]
+        res_downconv = [
+            ResidualBlock(inner_nc, norm_layer),
+            ResidualBlock(inner_nc, norm_layer),
+        ]
+        res_upconv = [
+            ResidualBlock(outer_nc, norm_layer),
+            ResidualBlock(outer_nc, norm_layer),
+        ]
 
         downrelu = nn.ReLU(True)
         uprelu = nn.ReLU(True)
@@ -64,15 +72,20 @@ class ResUnetSkipConnectionBlock(nn.Module):
             upnorm = norm_layer(outer_nc)
 
         if outermost:
-            upsample = nn.Upsample(scale_factor=2, mode='nearest')
+            upsample = nn.Upsample(scale_factor=2, mode="nearest")
             upconv = nn.Conv2d(
-                inner_nc * 2, outer_nc, kernel_size=3, stride=1, padding=1, bias=use_bias
+                inner_nc * 2,
+                outer_nc,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=use_bias,
             )
             down = [downconv, downrelu] + res_downconv
             up = [upsample, upconv]
             model = down + [submodule] + up
         elif innermost:
-            upsample = nn.Upsample(scale_factor=2, mode='nearest')
+            upsample = nn.Upsample(scale_factor=2, mode="nearest")
             upconv = nn.Conv2d(
                 inner_nc, outer_nc, kernel_size=3, stride=1, padding=1, bias=use_bias
             )
@@ -83,9 +96,14 @@ class ResUnetSkipConnectionBlock(nn.Module):
                 up = [upsample, upconv, upnorm, uprelu] + res_upconv
             model = down + up
         else:
-            upsample = nn.Upsample(scale_factor=2, mode='nearest')
+            upsample = nn.Upsample(scale_factor=2, mode="nearest")
             upconv = nn.Conv2d(
-                inner_nc * 2, outer_nc, kernel_size=3, stride=1, padding=1, bias=use_bias
+                inner_nc * 2,
+                outer_nc,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=use_bias,
             )
             if norm_layer is None:
                 down = [downconv, downrelu] + res_downconv
@@ -110,13 +128,24 @@ class ResUnetSkipConnectionBlock(nn.Module):
 
 class ResUnetGenerator(BaseModel):
     def __init__(
-        self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False
+        self,
+        input_nc,
+        output_nc,
+        num_downs,
+        ngf=64,
+        norm_layer=nn.BatchNorm2d,
+        use_dropout=False,
     ):
         super().__init__()
 
         # construct unet structure
         unet_block = ResUnetSkipConnectionBlock(
-            ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True
+            ngf * 8,
+            ngf * 8,
+            input_nc=None,
+            submodule=None,
+            norm_layer=norm_layer,
+            innermost=True,
         )
 
         for i in range(num_downs - 5):

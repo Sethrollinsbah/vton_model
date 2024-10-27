@@ -50,16 +50,22 @@ class AADResnetBlock(nn.Module):
 
         self.AAD_1 = AAD(inp_nc, a1_nc, a2_nc)
         self.relu_1 = nn.ReLU(inplace=True)
-        self.conv_1 = spectral_norm(nn.Conv2d(inp_nc * multi, mid_nc, kernel_size=3, padding=1))
+        self.conv_1 = spectral_norm(
+            nn.Conv2d(inp_nc * multi, mid_nc, kernel_size=3, padding=1)
+        )
 
         self.AAD_2 = AAD(mid_nc, a1_nc, a2_nc)
         self.relu_2 = nn.ReLU(inplace=True)
-        self.conv_2 = spectral_norm(nn.Conv2d(mid_nc * multi, out_nc, kernel_size=3, padding=1))
+        self.conv_2 = spectral_norm(
+            nn.Conv2d(mid_nc * multi, out_nc, kernel_size=3, padding=1)
+        )
 
         if self.learned_shortcut:
             self.AAD_s = AAD(inp_nc, a1_nc, a2_nc)
             self.relu_s = nn.ReLU(inplace=True)
-            self.conv_s = spectral_norm(nn.Conv2d(inp_nc * multi, out_nc, kernel_size=3, padding=1))
+            self.conv_s = spectral_norm(
+                nn.Conv2d(inp_nc * multi, out_nc, kernel_size=3, padding=1)
+            )
 
     def forward(self, inp, a1, a2):
         M_list = []
@@ -111,7 +117,7 @@ class AADGenerator(nn.Module):
 
     @staticmethod
     def upsample(x):
-        return F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
+        return F.interpolate(x, scale_factor=2, mode="bilinear", align_corners=True)
 
     def forward(self, A1_list, A2_list):
         M_list = []
@@ -156,19 +162,31 @@ class AADGenerator(nn.Module):
 
 
 class RMGNGenerator(BaseModel):
-    def __init__(self, in_person_nc=3, in_clothes_nc=4, nf=64, multilevel=False, predmask=True):
+    def __init__(
+        self, in_person_nc=3, in_clothes_nc=4, nf=64, multilevel=False, predmask=True
+    ):
         super().__init__()
         out_nc = 4
         self.in_nc = [in_person_nc, in_clothes_nc]
 
         SR_scale = 1
         aei_encoder_head = False
-        head_layers = int(np.log2(SR_scale)) + 1 if aei_encoder_head or SR_scale > 1 else 0
+        head_layers = (
+            int(np.log2(SR_scale)) + 1 if aei_encoder_head or SR_scale > 1 else 0
+        )
 
-        self.inp_encoder = AttrEncoder(nf=nf, in_nc=in_person_nc, head_layers=head_layers)
-        self.ref_encoder = AttrEncoder(nf=nf, in_nc=in_clothes_nc, head_layers=head_layers)
+        self.inp_encoder = AttrEncoder(
+            nf=nf, in_nc=in_person_nc, head_layers=head_layers
+        )
+        self.ref_encoder = AttrEncoder(
+            nf=nf, in_nc=in_clothes_nc, head_layers=head_layers
+        )
         self.generator = AADGenerator(
-            nf=nf, out_nc=out_nc, SR_scale=SR_scale, multilevel=multilevel, predmask=predmask
+            nf=nf,
+            out_nc=out_nc,
+            SR_scale=SR_scale,
+            multilevel=multilevel,
+            predmask=predmask,
         )
 
     def get_inp_attr(self, inp):

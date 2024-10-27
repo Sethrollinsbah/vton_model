@@ -2,7 +2,8 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['MeshLoss', 'GANLoss']
+__all__ = ["MeshLoss", "GANLoss"]
+
 
 def rot6d_to_rotmat(x):
     """Convert 6D rotation representation to 3x3 rotation matrix.
@@ -18,7 +19,7 @@ def rot6d_to_rotmat(x):
     a1 = x[:, :, 0]
     a2 = x[:, :, 1]
     b1 = F.normalize(a1)
-    b2 = F.normalize(a2 - torch.einsum('bi,bi->b', b1, a2).unsqueeze(-1) * b1)
+    b2 = F.normalize(a2 - torch.einsum("bi,bi->b", b1, a2).unsqueeze(-1) * b1)
     b3 = torch.cross(b1, b2)
     return torch.stack((b1, b2, b3), dim=-1)
 
@@ -51,8 +52,7 @@ def quat_to_rotmat(quat):
     """
     norm_quat = quat
     norm_quat = norm_quat / norm_quat.norm(p=2, dim=1, keepdim=True)
-    w, x, y, z = norm_quat[:, 0], norm_quat[:, 1],\
-        norm_quat[:, 2], norm_quat[:, 3]
+    w, x, y, z = norm_quat[:, 0], norm_quat[:, 1], norm_quat[:, 2], norm_quat[:, 3]
 
     B = quat.size(0)
 
@@ -60,18 +60,24 @@ def quat_to_rotmat(quat):
     wx, wy, wz = w * x, w * y, w * z
     xy, xz, yz = x * y, x * z, y * z
 
-    rotMat = torch.stack([
-        w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy,
-        w2 - x2 + y2 - z2, 2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz,
-        w2 - x2 - y2 + z2
-    ],
-                         dim=1).view(B, 3, 3)
+    rotMat = torch.stack(
+        [
+            w2 + x2 - y2 - z2,
+            2 * xy - 2 * wz,
+            2 * wy + 2 * xz,
+            2 * wz + 2 * xy,
+            w2 - x2 + y2 - z2,
+            2 * yz - 2 * wx,
+            2 * xz - 2 * wy,
+            2 * wx + 2 * yz,
+            w2 - x2 - y2 + z2,
+        ],
+        dim=1,
+    ).view(B, 3, 3)
     return rotMat
 
 
-
-def perspective_projection(points, rotation, translation, focal_length,
-                           camera_center):
+def perspective_projection(points, rotation, translation, focal_length, camera_center):
     """This function computes the perspective projection of a set of 3D points.
 
     Note:
@@ -94,18 +100,18 @@ def perspective_projection(points, rotation, translation, focal_length,
     K = torch.zeros([batch_size, 3, 3], device=points.device)
     K[:, 0, 0] = focal_length
     K[:, 1, 1] = focal_length
-    K[:, 2, 2] = 1.
+    K[:, 2, 2] = 1.0
     K[:, :-1, -1] = camera_center
 
     # Transform points
-    points = torch.einsum('bij,bkj->bki', rotation, points)
+    points = torch.einsum("bij,bkj->bki", rotation, points)
     points = points + translation.unsqueeze(1)
 
     # Apply perspective distortion
     projected_points = points / points[:, :, -1].unsqueeze(-1)
 
     # Apply camera intrinsics
-    projected_points = torch.einsum('bij,bkj->bki', K, projected_points)
+    projected_points = torch.einsum("bij,bkj->bki", K, projected_points)
     projected_points = projected_points[:, :, :-1]
     return projected_points
 
@@ -126,25 +132,27 @@ class MeshLoss(nn.Module):
         focal_length (float): Focal length of camera model. Default=5000.
     """
 
-    def __init__(self,
-                 joints_2d_loss_weight,
-                 joints_3d_loss_weight,
-                 vertex_loss_weight,
-                 smpl_pose_loss_weight,
-                 smpl_beta_loss_weight,
-                 img_res,
-                 focal_length=5000):
+    def __init__(
+        self,
+        joints_2d_loss_weight,
+        joints_3d_loss_weight,
+        vertex_loss_weight,
+        smpl_pose_loss_weight,
+        smpl_beta_loss_weight,
+        img_res,
+        focal_length=5000,
+    ):
 
         super().__init__()
         # Per-vertex loss on the mesh
-        self.criterion_vertex = nn.L1Loss(reduction='none')
+        self.criterion_vertex = nn.L1Loss(reduction="none")
 
         # Joints (2D and 3D) loss
-        self.criterion_joints_2d = nn.SmoothL1Loss(reduction='none')
-        self.criterion_joints_3d = nn.SmoothL1Loss(reduction='none')
+        self.criterion_joints_2d = nn.SmoothL1Loss(reduction="none")
+        self.criterion_joints_3d = nn.SmoothL1Loss(reduction="none")
 
         # Loss for SMPL parameter regression
-        self.criterion_regr = nn.MSELoss(reduction='none')
+        self.criterion_regr = nn.MSELoss(reduction="none")
 
         self.joints_2d_loss_weight = joints_2d_loss_weight
         self.joints_3d_loss_weight = joints_3d_loss_weight
@@ -160,8 +168,7 @@ class MeshLoss(nn.Module):
         The loss is weighted by joints_2d_visible.
         """
         conf = joints_2d_visible.float()
-        loss = (conf *
-                self.criterion_joints_2d(pred_joints_2d, gt_joints_2d)).mean()
+        loss = (conf * self.criterion_joints_2d(pred_joints_2d, gt_joints_2d)).mean()
         return loss
 
     def joints_3d_loss(self, pred_joints_3d, gt_joints_3d, joints_3d_visible):
@@ -174,12 +181,11 @@ class MeshLoss(nn.Module):
         if len(gt_joints_3d) > 0:
             gt_pelvis = (gt_joints_3d[:, 2, :] + gt_joints_3d[:, 3, :]) / 2
             gt_joints_3d = gt_joints_3d - gt_pelvis[:, None, :]
-            pred_pelvis = (pred_joints_3d[:, 2, :] +
-                           pred_joints_3d[:, 3, :]) / 2
+            pred_pelvis = (pred_joints_3d[:, 2, :] + pred_joints_3d[:, 3, :]) / 2
             pred_joints_3d = pred_joints_3d - pred_pelvis[:, None, :]
             return (
-                conf *
-                self.criterion_joints_3d(pred_joints_3d, gt_joints_3d)).mean()
+                conf * self.criterion_joints_3d(pred_joints_3d, gt_joints_3d)
+            ).mean()
         return pred_joints_3d.sum() * 0
 
     def vertex_loss(self, pred_vertices, gt_vertices, has_smpl):
@@ -193,8 +199,7 @@ class MeshLoss(nn.Module):
         loss_vertex = (conf[:, None, None] * loss_vertex).mean()
         return loss_vertex
 
-    def smpl_losses(self, pred_rotmat, pred_betas, gt_pose, gt_betas,
-                    has_smpl):
+    def smpl_losses(self, pred_rotmat, pred_betas, gt_pose, gt_betas, has_smpl):
         """Compute SMPL parameters loss for the examples that SMPL parameter
         annotations are available.
 
@@ -227,21 +232,27 @@ class MeshLoss(nn.Module):
         """
         batch_size = points_3d.shape[0]
         device = points_3d.device
-        cam_t = torch.stack([
-            camera[:, 1], camera[:, 2], 2 * self.focal_length /
-            (self.img_res * camera[:, 0] + 1e-9)
-        ],
-                            dim=-1)
+        cam_t = torch.stack(
+            [
+                camera[:, 1],
+                camera[:, 2],
+                2 * self.focal_length / (self.img_res * camera[:, 0] + 1e-9),
+            ],
+            dim=-1,
+        )
         camera_center = camera.new_zeros([batch_size, 2])
-        rot_t = torch.eye(
-            3, device=device,
-            dtype=points_3d.dtype).unsqueeze(0).expand(batch_size, -1, -1)
+        rot_t = (
+            torch.eye(3, device=device, dtype=points_3d.dtype)
+            .unsqueeze(0)
+            .expand(batch_size, -1, -1)
+        )
         joints_2d = perspective_projection(
             points_3d,
             rotation=rot_t,
             translation=cam_t,
             focal_length=self.focal_length,
-            camera_center=camera_center)
+            camera_center=camera_center,
+        )
         return joints_2d
 
     def forward(self, output, target):
@@ -262,38 +273,38 @@ class MeshLoss(nn.Module):
         losses = {}
 
         # Per-vertex loss for the shape
-        pred_vertices = output['vertices']
+        pred_vertices = output["vertices"]
 
-        gt_vertices = target['vertices']
-        has_smpl = target['has_smpl']
+        gt_vertices = target["vertices"]
+        has_smpl = target["has_smpl"]
         loss_vertex = self.vertex_loss(pred_vertices, gt_vertices, has_smpl)
-        losses['vertex_loss'] = loss_vertex * self.vertex_loss_weight
+        losses["vertex_loss"] = loss_vertex * self.vertex_loss_weight
 
         # Compute loss on SMPL parameters, if available
-        if 'pose' in output.keys() and 'beta' in output.keys():
-            pred_rotmat = output['pose']
-            pred_betas = output['beta']
-            gt_pose = target['pose']
-            gt_betas = target['beta']
+        if "pose" in output.keys() and "beta" in output.keys():
+            pred_rotmat = output["pose"]
+            pred_betas = output["beta"]
+            gt_pose = target["pose"]
+            gt_betas = target["beta"]
             loss_regr_pose, loss_regr_betas = self.smpl_losses(
-                pred_rotmat, pred_betas, gt_pose, gt_betas, has_smpl)
-            losses['smpl_pose_loss'] = \
-                loss_regr_pose * self.smpl_pose_loss_weight
-            losses['smpl_beta_loss'] = \
-                loss_regr_betas * self.smpl_beta_loss_weight
+                pred_rotmat, pred_betas, gt_pose, gt_betas, has_smpl
+            )
+            losses["smpl_pose_loss"] = loss_regr_pose * self.smpl_pose_loss_weight
+            losses["smpl_beta_loss"] = loss_regr_betas * self.smpl_beta_loss_weight
 
         # Compute 3D joints loss
-        pred_joints_3d = output['joints_3d']
-        gt_joints_3d = target['joints_3d']
-        joints_3d_visible = target['joints_3d_visible']
-        loss_joints_3d = self.joints_3d_loss(pred_joints_3d, gt_joints_3d,
-                                             joints_3d_visible)
-        losses['joints_3d_loss'] = loss_joints_3d * self.joints_3d_loss_weight
+        pred_joints_3d = output["joints_3d"]
+        gt_joints_3d = target["joints_3d"]
+        joints_3d_visible = target["joints_3d_visible"]
+        loss_joints_3d = self.joints_3d_loss(
+            pred_joints_3d, gt_joints_3d, joints_3d_visible
+        )
+        losses["joints_3d_loss"] = loss_joints_3d * self.joints_3d_loss_weight
 
         # Compute 2D reprojection loss for the 2D joints
-        pred_camera = output['camera']
-        gt_joints_2d = target['joints_2d']
-        joints_2d_visible = target['joints_2d_visible']
+        pred_camera = output["camera"]
+        gt_joints_2d = target["joints_2d"]
+        joints_2d_visible = target["joints_2d_visible"]
         pred_joints_2d = self.project_points(pred_joints_3d, pred_camera)
 
         # Normalize keypoints to [-1,1]
@@ -303,9 +314,10 @@ class MeshLoss(nn.Module):
         # The coordinate origin of gt_joints_2d is
         # the top left corner of the input image.
         gt_joints_2d = 2 * gt_joints_2d / (self.img_res - 1) - 1
-        loss_joints_2d = self.joints_2d_loss(pred_joints_2d, gt_joints_2d,
-                                             joints_2d_visible)
-        losses['joints_2d_loss'] = loss_joints_2d * self.joints_2d_loss_weight
+        loss_joints_2d = self.joints_2d_loss(
+            pred_joints_2d, gt_joints_2d, joints_2d_visible
+        )
+        losses["joints_2d_loss"] = loss_joints_2d * self.joints_2d_loss_weight
 
         return losses
 
@@ -322,28 +334,25 @@ class GANLoss(nn.Module):
             for discriminators.
     """
 
-    def __init__(self,
-                 gan_type,
-                 real_label_val=1.0,
-                 fake_label_val=0.0,
-                 loss_weight=1.0):
+    def __init__(
+        self, gan_type, real_label_val=1.0, fake_label_val=0.0, loss_weight=1.0
+    ):
         super().__init__()
         self.gan_type = gan_type
         self.loss_weight = loss_weight
         self.real_label_val = real_label_val
         self.fake_label_val = fake_label_val
 
-        if self.gan_type == 'vanilla':
+        if self.gan_type == "vanilla":
             self.loss = nn.BCEWithLogitsLoss()
-        elif self.gan_type == 'lsgan':
+        elif self.gan_type == "lsgan":
             self.loss = nn.MSELoss()
-        elif self.gan_type == 'wgan':
+        elif self.gan_type == "wgan":
             self.loss = self._wgan_loss
-        elif self.gan_type == 'hinge':
+        elif self.gan_type == "hinge":
             self.loss = nn.ReLU()
         else:
-            raise NotImplementedError(
-                f'GAN type {self.gan_type} is not implemented.')
+            raise NotImplementedError(f"GAN type {self.gan_type} is not implemented.")
 
     @staticmethod
     def _wgan_loss(input, target):
@@ -370,10 +379,9 @@ class GANLoss(nn.Module):
                 otherwise, return Tensor.
         """
 
-        if self.gan_type == 'wgan':
+        if self.gan_type == "wgan":
             return target_is_real
-        target_val = (
-            self.real_label_val if target_is_real else self.fake_label_val)
+        target_val = self.real_label_val if target_is_real else self.fake_label_val
         return input.new_ones(input.size()) * target_val
 
     def forward(self, input, target_is_real, is_disc=False):
@@ -389,7 +397,7 @@ class GANLoss(nn.Module):
             Tensor: GAN loss value.
         """
         target_label = self.get_target_label(input, target_is_real)
-        if self.gan_type == 'hinge':
+        if self.gan_type == "hinge":
             if is_disc:  # for discriminators in hinge-gan
                 input = -input if target_is_real else input
                 loss = self.loss(1 + input).mean()

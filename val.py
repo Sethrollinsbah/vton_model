@@ -18,13 +18,20 @@ from utils.torch_utils import get_ckpt, load_ckpt, select_device
 
 
 def run_val_pf(
-    data_loader, models, align_corners, device, img_dir, save_dir, log_path, save_img=True
+    data_loader,
+    models,
+    align_corners,
+    device,
+    img_dir,
+    save_dir,
+    log_path,
+    save_img=True,
 ):
-    warp_model, gen_model = models['warp'], models['gen']
+    warp_model, gen_model = models["warp"], models["gen"]
     metrics = {}
 
-    tryon_dir = Path(save_dir) / 'results' / 'tryon'
-    visualize_dir = Path(save_dir) / 'results' / 'visualize'
+    tryon_dir = Path(save_dir) / "results" / "tryon"
+    visualize_dir = Path(save_dir) / "results" / "visualize"
     tryon_dir.mkdir(parents=True, exist_ok=True)
     visualize_dir.mkdir(parents=True, exist_ok=True)
 
@@ -35,15 +42,15 @@ def run_val_pf(
         for idx, data in enumerate(tqdm(data_loader)):
             # Prepare data
             # with dt[0]:
-            real_image = data['image'].to(device)
-            clothes = data['color'].to(device)
-            edge = data['edge'].to(device)
+            real_image = data["image"].to(device)
+            clothes = data["color"].to(device)
+            edge = data["edge"].to(device)
             edge = (edge > 0.5).float()
             clothes = clothes * edge
 
             # Warp
             # with dt[1]:
-            with cupy.cuda.Device(int(device.split(':')[-1])):
+            with cupy.cuda.Device(int(device.split(":")[-1])):
                 flow_out = warp_model(
                     real_image, clothes, edge
                 )  # edge is only for parameter replacement during train, does not work in val
@@ -62,8 +69,8 @@ def run_val_pf(
                 warped_edge = F.grid_sample(
                     edge,
                     last_flow.permute(0, 2, 3, 1),
-                    mode='bilinear',
-                    padding_mode='zeros',
+                    mode="bilinear",
+                    padding_mode="zeros",
                     align_corners=align_corners,
                 )
 
@@ -80,8 +87,8 @@ def run_val_pf(
             # seen += len(p_tryon)
 
             # Save images
-            for j in range(len(data['p_name'])):
-                p_name = data['p_name'][j]
+            for j in range(len(data["p_name"])):
+                p_name = data["p_name"][j]
 
                 tv.utils.save_image(
                     p_tryon[j],
@@ -109,13 +116,15 @@ def run_val_pf(
     )
 
     if not save_img:
-        shutil.rmtree(Path(save_dir) / 'results')
+        shutil.rmtree(Path(save_dir) / "results")
 
     # FID
-    metrics['fid'] = fid
+    metrics["fid"] = fid
 
     # Log
-    metrics_str = 'Metric, {}'.format(', '.join([f'{k}: {v}' for k, v in metrics.items()]))
+    metrics_str = "Metric, {}".format(
+        ", ".join([f"{k}: {v}" for k, v in metrics.items()])
+    )
     print_log(log_path, metrics_str)
 
     return metrics
@@ -124,34 +133,36 @@ def run_val_pf(
 def main(opt):
     # Device
     device = select_device(opt.device, batch_size=opt.batch_size)
-    log_path = Path(opt.save_dir) / 'log.txt'
+    log_path = Path(opt.save_dir) / "log.txt"
 
     # Model
     warp_model = AFWM(3, opt.align_corners).to(device)
     warp_model.eval()
     warp_ckpt = get_ckpt(opt.pf_warp_checkpoint)
     load_ckpt(warp_model, warp_ckpt)
-    print_log(log_path, f'Load pretrained parser-free warp from {opt.pf_warp_checkpoint}')
+    print_log(
+        log_path, f"Load pretrained parser-free warp from {opt.pf_warp_checkpoint}"
+    )
     gen_model = MobileNetV2_unet(7, 4).to(device)
     gen_model.eval()
     gen_ckpt = get_ckpt(opt.pf_gen_checkpoint)
     load_ckpt(gen_model, gen_ckpt)
-    print_log(log_path, f'Load pretrained parser-free gen from {opt.pf_gen_checkpoint}')
+    print_log(log_path, f"Load pretrained parser-free gen from {opt.pf_gen_checkpoint}")
 
     # Dataloader
-    test_data = LoadVITONDataset(path=opt.dataroot, phase='test', size=(256, 192))
+    test_data = LoadVITONDataset(path=opt.dataroot, phase="test", size=(256, 192))
     data_loader = DataLoader(
         test_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.workers
     )
 
     run_val_pf(
         data_loader=data_loader,
-        models={'warp': warp_model, 'gen': gen_model},
+        models={"warp": warp_model, "gen": gen_model},
         align_corners=opt.align_corners,
         device=device,
         log_path=log_path,
         save_dir=opt.save_dir,
-        img_dir=Path(opt.dataroot) / 'test_img',
+        img_dir=Path(opt.dataroot) / "test_img",
         save_img=True,
     )
 

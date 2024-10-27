@@ -24,7 +24,14 @@ class DownSample(nn.Module):
         self.block = nn.Sequential(
             nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                bias=False,
+            ),
         )
 
     def forward(self, x):
@@ -39,11 +46,15 @@ class FeatureEncoder(nn.Module):
         for i, out_chns in enumerate(chns):
             if i == 0:
                 encoder = nn.Sequential(
-                    DownSample(in_channels, out_chns), ResBlock(out_chns), ResBlock(out_chns)
+                    DownSample(in_channels, out_chns),
+                    ResBlock(out_chns),
+                    ResBlock(out_chns),
                 )
             else:
                 encoder = nn.Sequential(
-                    DownSample(chns[i - 1], out_chns), ResBlock(out_chns), ResBlock(out_chns)
+                    DownSample(chns[i - 1], out_chns),
+                    ResBlock(out_chns),
+                    ResBlock(out_chns),
                 )
 
             self.encoders.append(encoder)
@@ -86,7 +97,9 @@ class RefinePyramid(nn.Module):
             feature = self.adaptive[i](conv_ftr)
             # fuse
             if last_feature is not None:
-                feature = feature + F.interpolate(last_feature, scale_factor=2, mode='nearest')
+                feature = feature + F.interpolate(
+                    last_feature, scale_factor=2, mode="nearest"
+                )
             # smooth
             feature = self.smooth[i](feature)
             last_feature = feature

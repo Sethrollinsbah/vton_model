@@ -25,7 +25,7 @@ class BaseModel(nn.Module):
         """
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
-        return super().__str__() + f'\nTrainable parameters: {params}'
+        return super().__str__() + f"\nTrainable parameters: {params}"
 
     # def init_weights(self, init_type='xavier', gain=0.02):
     #     from torch.nn import init

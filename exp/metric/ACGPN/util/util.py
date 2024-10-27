@@ -27,6 +27,7 @@ def tensor2im(image_tensor, imtype=np.uint8, normalize=True):
 
     return image_numpy
 
+
 # Converts a one-hot tensor into a colorful label map
 
 
@@ -37,7 +38,7 @@ def tensor2label(label_tensor, n_label, imtype=np.uint8):
     if label_tensor.size()[0] > 1:
         label_tensor = label_tensor.max(0, keepdim=True)[1]
     label_tensor = Colorize(n_label)(label_tensor)
-    #label_numpy = np.transpose(label_tensor.numpy(), (1, 2, 0))
+    # label_numpy = np.transpose(label_tensor.numpy(), (1, 2, 0))
     label_numpy = label_tensor.numpy()
     label_numpy = label_numpy / 255.0
 
@@ -62,9 +63,9 @@ def tensor_to_image(img_tensor, grayscale=False):
         tensor = tensor.cpu().clamp(0, 255)
 
     try:
-        array = tensor.numpy().astype('uint8')
+        array = tensor.numpy().astype("uint8")
     except:
-        array = tensor.detach().numpy().astype('uint8')
+        array = tensor.detach().numpy().astype("uint8")
 
     if array.shape[0] == 1:
         array = array.squeeze(0)
@@ -86,6 +87,7 @@ def mkdir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+
 ###############################################################################
 # Code from
 # https://github.com/ycszen/pytorch-seg/blob/master/transform.py
@@ -95,20 +97,51 @@ def mkdir(path):
 
 def uint82bin(n, count=8):
     """returns the binary of integer n, count refers to amount of bits"""
-    return ''.join([str((n >> y) & 1) for y in range(count-1, -1, -1)])
+    return "".join([str((n >> y) & 1) for y in range(count - 1, -1, -1)])
 
 
 def labelcolormap(N):
     if N == 35:  # cityscape
-        cmap = np.array([(0,  0,  0), (0,  0,  0), (0,  0,  0), (0,  0,  0), (0,  0,  0), (111, 74,  0), (81,  0, 81),
-                         (128, 64, 128), (244, 35, 232), (250, 170, 160), (230,
-                                                                           150, 140), (70, 70, 70), (102, 102, 156), (190, 153, 153),
-                         (180, 165, 180), (150, 100, 100), (150, 120, 90), (153,
-                                                                            153, 153), (153, 153, 153), (250, 170, 30), (220, 220,  0),
-                         (107, 142, 35), (152, 251, 152), (70, 130, 180), (220,
-                                                                           20, 60), (255,  0,  0), (0,  0, 142), (0,  0, 70),
-                         (0, 60, 100), (0,  0, 90), (0,  0, 110), (0, 80, 100), (0,  0, 230), (119, 11, 32), (0,  0, 142)],
-                        dtype=np.uint8)
+        cmap = np.array(
+            [
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (111, 74, 0),
+                (81, 0, 81),
+                (128, 64, 128),
+                (244, 35, 232),
+                (250, 170, 160),
+                (230, 150, 140),
+                (70, 70, 70),
+                (102, 102, 156),
+                (190, 153, 153),
+                (180, 165, 180),
+                (150, 100, 100),
+                (150, 120, 90),
+                (153, 153, 153),
+                (153, 153, 153),
+                (250, 170, 30),
+                (220, 220, 0),
+                (107, 142, 35),
+                (152, 251, 152),
+                (70, 130, 180),
+                (220, 20, 60),
+                (255, 0, 0),
+                (0, 0, 142),
+                (0, 0, 70),
+                (0, 60, 100),
+                (0, 0, 90),
+                (0, 0, 110),
+                (0, 80, 100),
+                (0, 0, 230),
+                (119, 11, 32),
+                (0, 0, 142),
+            ],
+            dtype=np.uint8,
+        )
     else:
         cmap = np.zeros((N, 3), dtype=np.uint8)
         for i in range(N):
@@ -116,9 +149,9 @@ def labelcolormap(N):
             id = i
             for j in range(7):
                 str_id = uint82bin(id)
-                r = r ^ (np.uint8(str_id[-1]) << (7-j))
-                g = g ^ (np.uint8(str_id[-2]) << (7-j))
-                b = b ^ (np.uint8(str_id[-3]) << (7-j))
+                r = r ^ (np.uint8(str_id[-1]) << (7 - j))
+                g = g ^ (np.uint8(str_id[-2]) << (7 - j))
+                b = b ^ (np.uint8(str_id[-3]) << (7 - j))
                 id = id >> 3
             cmap[i, 0] = r
             cmap[i, 1] = g
